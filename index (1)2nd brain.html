@@ -1,0 +1,640 @@
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧠 Second Brain</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1f2d45;
+      --accent:#4f8ef7;--accent2:#7c3aed;--accent3:#06d6a0;--warn:#f59e0b;
+      --danger:#ef4444;--text:#e8edf5;--text2:#8b9ab5;--text3:#4a5568;
+      --card-shadow:0 4px 24px rgba(0,0,0,0.4);--radius:16px;--radius-sm:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")}
+    .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 60% 50% at 20% 20%,rgba(79,142,247,.07) 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 80% 70%,rgba(124,58,237,.06) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 60% 10%,rgba(6,214,160,.04) 0%,transparent 70%)}
+    .app-container{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+    /* HEADER */
+    header{position:sticky;top:0;z-index:100;background:rgba(10,14,26,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+    .logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--text);text-decoration:none}
+    .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(79,142,247,.3)}
+    .header-actions{display:flex;align-items:center;gap:12px}
+    .user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;cursor:pointer;border:2px solid var(--border);transition:border-color .2s}
+    .user-avatar:hover{border-color:var(--accent)}
+    .btn-icon{width:36px;height:36px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s}
+    .btn-icon:hover{background:var(--border);color:var(--text)}
+    /* LAYOUT */
+    .main-layout{display:grid;grid-template-columns:240px 1fr;flex:1;min-height:calc(100vh - 64px)}
+    /* SIDEBAR */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;position:sticky;top:64px;height:calc(100vh - 64px);overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+    .sidebar-section-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text3);padding:8px 12px 4px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);color:var(--text2);cursor:pointer;transition:all .18s;font-size:.9rem;border:1px solid transparent;text-decoration:none}
+    .nav-item:hover{background:var(--surface2);color:var(--text)}
+    .nav-item.active{background:linear-gradient(135deg,rgba(79,142,247,.15),rgba(124,58,237,.1));border-color:rgba(79,142,247,.2);color:var(--accent)}
+    .nav-item .nav-icon{font-size:18px;width:22px;text-align:center}
+    .nav-badge{margin-left:auto;background:var(--accent);color:white;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px}
+    .nav-badge.warn{background:var(--warn)}
+    .sidebar-divider{height:1px;background:var(--border);margin:8px 0}
+    .subject-tags{display:flex;flex-direction:column;gap:4px}
+    .subject-tag{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:.85rem;color:var(--text2);transition:all .18s;border:1px solid transparent}
+    .subject-tag:hover{background:var(--surface2);color:var(--text)}
+    .subject-tag.active{color:var(--text);background:var(--surface2);border-color:var(--border)}
+    .tag-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .tag-count{margin-left:auto;font-size:.75rem;color:var(--text3)}
+    /* CONTENT */
+    .content{padding:28px;display:flex;flex-direction:column;gap:24px;overflow-y:auto}
+    /* STATS */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+    .stat-card:hover{transform:translateY(-2px);box-shadow:var(--card-shadow)}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .stat-card.blue::before{background:linear-gradient(90deg,var(--accent),transparent)}
+    .stat-card.purple::before{background:linear-gradient(90deg,var(--accent2),transparent)}
+    .stat-card.green::before{background:linear-gradient(90deg,var(--accent3),transparent)}
+    .stat-card.warn::before{background:linear-gradient(90deg,var(--warn),transparent)}
+    .stat-label{font-size:.75rem;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+    .stat-value{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+    .stat-value.blue{color:var(--accent)}.stat-value.purple{color:var(--accent2)}.stat-value.green{color:var(--accent3)}.stat-value.warn{color:var(--warn)}
+    .stat-sub{font-size:.75rem;color:var(--text3);margin-top:4px}
+    .stat-icon{position:absolute;right:16px;top:16px;font-size:28px;opacity:.15}
+    /* FORM */
+    .note-form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .card-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+    .card-body{padding:24px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .form-group{display:flex;flex-direction:column;gap:6px}
+    .form-group.full{grid-column:1/-1}
+    label{font-size:.8rem;font-weight:500;color:var(--text2);letter-spacing:.03em}
+    input,textarea,select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;transition:border-color .2s,box-shadow .2s;outline:none;width:100%}
+    input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.1)}
+    textarea{resize:vertical;min-height:120px}
+    select option{background:var(--surface2)}
+    .form-footer{display:flex;justify-content:flex-end;gap:12px;margin-top:4px}
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .2s;text-decoration:none}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#3b6fd4);color:white;box-shadow:0 4px 14px rgba(79,142,247,.3)}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,142,247,.4)}
+    .btn-secondary{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+    .btn-secondary:hover{background:var(--border);color:var(--text)}
+    .btn-danger{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.2)}
+    .btn-danger:hover{background:rgba(239,68,68,.2)}
+    .btn-success{background:rgba(6,214,160,.1);color:var(--accent3);border:1px solid rgba(6,214,160,.2)}
+    .btn-success:hover{background:rgba(6,214,160,.2)}
+    .btn-sm{padding:7px 14px;font-size:.8rem}
+    .btn-loading{opacity:.7;pointer-events:none}
+    .btn-ai{background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(79,142,247,.1));border:1px solid rgba(124,58,237,.3);color:#a78bfa;font-size:.75rem;padding:5px 10px}
+    .btn-ai:hover{background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(79,142,247,.2))}
+    .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+    /* NOTES */
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .section-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700}
+    .notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+    .note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s;cursor:pointer;animation:fadeIn .35s ease}
+    .note-card:hover{transform:translateY(-3px);box-shadow:var(--card-shadow);border-color:rgba(79,142,247,.3)}
+    .note-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .note-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;line-height:1.3;flex:1}
+    .note-actions{display:flex;gap:4px;opacity:0;transition:opacity .2s}
+    .note-card:hover .note-actions{opacity:1}
+    .note-content{font-size:.85rem;color:var(--text2);line-height:1.6;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .note-footer{display:flex;align-items:center;justify-content:space-between}
+    .subject-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .note-date{font-size:.72rem;color:var(--text3)}
+    .revision-indicator{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 28px 28px 0;border-color:transparent var(--warn) transparent transparent}
+    .revision-indicator::after{content:'⏰';position:absolute;top:2px;right:-24px;font-size:10px}
+    .note-card.revision-due{border-color:rgba(245,158,11,.3)}
+    .note-card.revised-card{opacity:.7}
+    /* REVISION PANEL */
+    .revision-panel{background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.2);border-radius:var(--radius);padding:20px}
+    .revision-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+    .revision-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--warn)}
+    .revision-list{display:flex;flex-direction:column;gap:10px}
+    .revision-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .revision-info{flex:1}
+    .revision-note-title{font-size:.875rem;font-weight:600;margin-bottom:2px}
+    .revision-note-subject{font-size:.75rem;color:var(--text3)}
+    .revision-due-text{font-size:.72rem;color:var(--warn);font-weight:600}
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:580px;max-height:85vh;overflow-y:auto;transform:translateY(20px);transition:transform .25s}
+    .modal-overlay.open .modal{transform:translateY(0)}
+    .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1}
+    .modal-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700}
+    .modal-body{padding:24px}
+    .modal-close{width:32px;height:32px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+    .modal-close:hover{background:var(--border);color:var(--text)}
+    .ai-response{background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(79,142,247,.05));border:1px solid rgba(124,58,237,.2);border-radius:var(--radius-sm);padding:16px;font-size:.875rem;line-height:1.7;color:var(--text2);margin-top:16px}
+    .ai-thinking{display:flex;align-items:center;gap:10px;color:#a78bfa;font-size:.875rem;margin-top:16px}
+    .thinking-dots{display:flex;gap:4px}
+    .thinking-dots span{width:6px;height:6px;border-radius:50%;background:#a78bfa;animation:bounce 1.2s infinite}
+    .thinking-dots span:nth-child(2){animation-delay:.2s}
+    .thinking-dots span:nth-child(3){animation-delay:.4s}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+    .note-detail-subject{margin-bottom:16px}
+    .note-detail-content{font-size:.9rem;line-height:1.8;color:var(--text2);white-space:pre-wrap;margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+    .note-detail-meta{display:flex;gap:16px;font-size:.78rem;color:var(--text3);flex-wrap:wrap}
+    /* SEARCH */
+    .search-bar{position:relative}
+    .search-input{padding-left:40px!important;background:var(--surface)!important}
+    .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:16px;pointer-events:none}
+    /* FILTER TABS */
+    .filter-tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .filter-tab{padding:7px 16px;border-radius:20px;font-size:.8rem;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .18s}
+    .filter-tab:hover{border-color:var(--accent);color:var(--accent)}
+    .filter-tab.active{background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 4px 12px rgba(79,142,247,.3)}
+    /* TOAST */
+    .toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+    .toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:.875rem;color:var(--text);box-shadow:var(--card-shadow);animation:slideIn .3s ease;min-width:260px;max-width:340px}
+    .toast.success{border-left:3px solid var(--accent3)}.toast.error{border-left:3px solid var(--danger)}.toast.info{border-left:3px solid var(--accent)}.toast.warn{border-left:3px solid var(--warn)}
+    @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+    /* EMPTY STATE */
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+    .empty-icon{font-size:56px;margin-bottom:16px;opacity:.5}
+    .empty-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text2);margin-bottom:8px}
+    .empty-text{font-size:.875rem}
+    /* SPINNER */
+    .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    /* BOTTOM NAV */
+    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(17,24,39,.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));grid-template-columns:repeat(4,1fr)}
+    .bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;cursor:pointer;color:var(--text3);font-size:.65rem;font-weight:500;transition:color .2s;border:none;background:transparent}
+    .bottom-nav-item .nav-emoji{font-size:20px}
+    .bottom-nav-item.active{color:var(--accent)}
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+    /* SECTION VIEWS */
+    .section-view{display:none}.section-view.active{display:block}
+    /* ANIMATIONS */
+    .fade-in{animation:fadeIn .4s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    /* RESPONSIVE */
+    @media(max-width:1024px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:768px){
+      .main-layout{grid-template-columns:1fr}.sidebar{display:none}
+      .content{padding:16px;padding-bottom:100px}
+      .stats-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+      .form-row{grid-template-columns:1fr}.bottom-nav{display:grid}
+      .notes-grid{grid-template-columns:1fr}
+      .header-actions .btn-icon:not(:last-child){display:none}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:1fr 1fr}.stat-value{font-size:1.6rem}
+      header{padding:0 16px}.content{padding:12px;padding-bottom:100px}
+    }
+  </style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="app-container">
+  <header>
+    <a class="logo" href="#">
+      <div class="logo-icon">🧠</div>
+      <span id="app-name-header">Second Brain</span>
+    </a>
+    <div class="header-actions">
+      <button class="btn-icon" title="Search" onclick="focusSearch()">🔍</button>
+      <button class="btn-icon" title="Notifications">🔔</button>
+      <div class="user-avatar" title="Profile">S</div>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <aside class="sidebar">
+      <span class="sidebar-section-label">Menu</span>
+      <div class="nav-item active" onclick="showSection('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showSection('notes',this)"><span class="nav-icon">📝</span> My Notes <span class="nav-badge" id="sidebar-notes-count">0</span></div>
+      <div class="nav-item" onclick="showSection('revision',this)"><span class="nav-icon">⏰</span> Revision <span class="nav-badge warn" id="sidebar-revision-count">0</span></div>
+      <div class="nav-item" onclick="showSection('add',this)"><span class="nav-icon">➕</span> Add Note</div>
+      <div class="sidebar-divider"></div>
+      <span class="sidebar-section-label">Subjects</span>
+      <div class="subject-tags" id="sidebar-subjects">
+        <div class="subject-tag active" onclick="filterBySubject('all',this)">
+          <div class="tag-dot" style="background:#4f8ef7"></div>All Notes<span class="tag-count" id="count-all">0</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- DASHBOARD -->
+      <div class="section-view active" id="view-dashboard">
+        <div class="stats-grid" style="margin-bottom:24px">
+          <div class="stat-card blue"><div class="stat-icon">📝</div><div class="stat-label">Total Notes</div><div class="stat-value blue" id="stat-total">0</div><div class="stat-sub">All subjects</div></div>
+          <div class="stat-card warn"><div class="stat-icon">⏰</div><div class="stat-label">Revision Due</div><div class="stat-value warn" id="stat-revision">0</div><div class="stat-sub">Pending review</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-label">Revised Today</div><div class="stat-value green" id="stat-revised">0</div><div class="stat-sub">Completed</div></div>
+          <div class="stat-card purple"><div class="stat-icon">🤖</div><div class="stat-label">AI Queries</div><div class="stat-value purple" id="stat-ai">0</div><div class="stat-sub">Explanations</div></div>
+        </div>
+        <div class="revision-panel" id="revision-panel" style="display:none;margin-bottom:24px">
+          <div class="revision-header"><span style="font-size:20px">⏰</span><div class="revision-title">Revision Due</div><span style="font-size:.8rem;color:var(--text3);margin-left:auto" id="revision-panel-count"></span></div>
+          <div class="revision-list" id="revision-list"></div>
+        </div>
+        <div>
+          <div class="section-header">
+            <div class="section-title">📌 Recent Notes</div>
+            <button class="btn btn-secondary btn-sm" onclick="showSection('notes',document.querySelector('.sidebar .nav-item:nth-child(2)'))">View All →</button>
+          </div>
+          <div class="notes-grid" id="recent-notes-grid"><div class="empty-state"><div class="empty-icon">🧠</div><div class="empty-title">No notes yet</div><div class="empty-text">Add your first note to get started</div></div></div>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="section-view" id="view-notes">
+        <div class="section-header" style="margin-bottom:16px"><div class="section-title">📝 My Notes</div></div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+          <div class="search-bar"><span class="search-icon">🔍</span><input type="text" class="search-input" id="search-input" placeholder="Search notes by title or content..." oninput="renderAllNotes()"/></div>
+          <div class="filter-tabs" id="filter-tabs"><button class="filter-tab active" onclick="setFilter('all',this)">All</button></div>
+        </div>
+        <div class="notes-grid" id="all-notes-grid"></div>
+      </div>
+
+      <!-- REVISION -->
+      <div class="section-view" id="view-revision">
+        <div class="section-header" style="margin-bottom:20px"><div class="section-title">⏰ Revision Schedule</div></div>
+        <div id="revision-full-list"></div>
+      </div>
+
+      <!-- ADD NOTE -->
+      <div class="section-view" id="view-add">
+        <div class="note-form-card fade-in">
+          <div class="card-header"><div class="card-title">✏️ Add New Note</div></div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group"><label>Title *</label><input type="text" id="note-title" placeholder="e.g. Ohm's Law"/></div>
+              <div class="form-group">
+                <label>Subject *</label>
+                <select id="note-subject">
+                  <option value="">-- Select Subject --</option>
+                  <option value="Physics">⚛️ Physics</option><option value="Chemistry">🧪 Chemistry</option>
+                  <option value="Math">📐 Math</option><option value="Biology">🌿 Biology</option>
+                  <option value="English">📖 English</option><option value="Bangla">🇧🇩 Bangla</option>
+                  <option value="ICT">💻 ICT</option><option value="History">📜 History</option>
+                  <option value="Geography">🌍 Geography</option><option value="Other">📌 Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group full" style="margin-bottom:16px"><label>Note Content *</label><textarea id="note-content" placeholder="Write your note here... Be detailed for better AI explanations."></textarea></div>
+            <div class="form-footer">
+              <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+              <button class="btn btn-primary" id="save-btn" onclick="saveNote()"><span>💾</span> Save Note</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- BOTTOM NAV (mobile only — no extra FAB) -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" onclick="showSection('dashboard',this)" data-section="dashboard"><span class="nav-emoji">📊</span> Dashboard</button>
+    <button class="bottom-nav-item" onclick="showSection('notes',this)" data-section="notes"><span class="nav-emoji">📝</span> Notes</button>
+    <button class="bottom-nav-item" onclick="showSection('revision',this)" data-section="revision"><span class="nav-emoji">⏰</span> Revision</button>
+    <button class="bottom-nav-item" onclick="showSection('add',this)" data-section="add"><span class="nav-emoji">➕</span> Add</button>
+  </nav>
+</div>
+
+<!-- NOTE DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="detail-title"></div>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note-detail-subject"><span id="detail-subject-badge"></span></div>
+      <div class="note-detail-content" id="detail-content"></div>
+      <div class="note-detail-meta"><span id="detail-created"></span><span id="detail-revision-date"></span></div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ai" onclick="explainWithAI(window.currentNoteId)">🤖 Explain with AI</button>
+        <button class="btn btn-success btn-sm" id="revise-btn" onclick="markRevised(window.currentNoteId)">✅ Mark Revised</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNote(window.currentNoteId)">🗑️ Delete</button>
+      </div>
+      <div id="ai-area"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore,collection,addDoc,getDocs,deleteDoc,
+    doc,updateDoc,getDoc,setDoc,
+    query,orderBy,serverTimestamp,Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  /* ══ FIREBASE CONFIG ══ */
+  const firebaseConfig = {
+    apiKey:"AIzaSyD12CKuKR0pr6LZVPNvm8DIvyMACWUddWc",
+    authDomain:"focosmood.firebaseapp.com",
+    databaseURL:"https://focosmood-default-rtdb.firebaseio.com",
+    projectId:"focosmood",
+    storageBucket:"focosmood.firebasestorage.app",
+    messagingSenderId:"709940101855",
+    appId:"1:709940101855:web:e07ee9007c64669e8bdf6a",
+    measurementId:"G-REWDH6YYLD"
+  };
+  const GROQ_MODEL = "llama-3.1-8b-instant";
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  /* ══ GLOBAL STATE ══ */
+  window.notesData    = [];
+  window.currentNoteId = null;
+  window.currentFilter = 'all';
+  window.appSettings  = {groqKey:'',revisionDelay:24,appName:'Second Brain',aiQueryCount:0};
+  window.revisedToday = 0;
+
+  /* ══ SUBJECT COLORS ══ */
+  const SC={Physics:{bg:'rgba(79,142,247,.15)',color:'#4f8ef7',dot:'#4f8ef7'},Chemistry:{bg:'rgba(124,58,237,.15)',color:'#a78bfa',dot:'#a78bfa'},Math:{bg:'rgba(6,214,160,.15)',color:'#06d6a0',dot:'#06d6a0'},Biology:{bg:'rgba(34,197,94,.15)',color:'#4ade80',dot:'#4ade80'},English:{bg:'rgba(251,191,36,.15)',color:'#fbbf24',dot:'#fbbf24'},Bangla:{bg:'rgba(249,115,22,.15)',color:'#fb923c',dot:'#fb923c'},ICT:{bg:'rgba(20,184,166,.15)',color:'#2dd4bf',dot:'#2dd4bf'},History:{bg:'rgba(236,72,153,.15)',color:'#f472b6',dot:'#f472b6'},Geography:{bg:'rgba(59,130,246,.15)',color:'#60a5fa',dot:'#60a5fa'},Other:{bg:'rgba(107,114,128,.15)',color:'#9ca3af',dot:'#9ca3af'}};
+  function getSS(s){return SC[s]||SC.Other;}
+  window.getSubjectStyle=getSS;
+
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  /* ══ TOAST ══ */
+  window.showToast=function(msg,type='info',dur=3500){
+    const icons={success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+    const t=document.createElement('div');t.className=`toast ${type}`;
+    t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),dur);
+  };
+
+  /* ══ SHOW SECTION ══ */
+  window.showSection=function(section,el){
+    document.querySelectorAll('.section-view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+section)?.classList.add('active');
+    document.querySelectorAll('.sidebar .nav-item').forEach(n=>n.classList.remove('active'));
+    if(el&&el.classList?.contains('nav-item'))el.classList.add('active');
+    document.querySelectorAll('.bottom-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
+    if(section==='revision')renderRevisionFull();
+    if(section==='notes')renderAllNotes();
+    if(section==='dashboard')renderDashboard();
+  };
+
+  /* ══ LOAD SETTINGS FROM FIREBASE ══ */
+  async function loadSettings(){
+    try{
+      const snap=await getDoc(doc(db,"settings","app"));
+      if(snap.exists()){
+        const d=snap.data();
+        window.appSettings.groqKey      =d.groqKey      ||'';
+        window.appSettings.revisionDelay=d.revisionDelay||24;
+        window.appSettings.appName      =d.appName      ||'Second Brain';
+        window.appSettings.aiQueryCount =d.aiQueryCount ||0;
+        window.revisedToday             =d.revisedToday ||0;
+      }
+    }catch(e){/* use defaults */}
+    const n=document.getElementById('app-name-header');
+    if(n)n.textContent=window.appSettings.appName;
+    document.title='🧠 '+window.appSettings.appName;
+  }
+
+  /* ══ LOAD NOTES ══ */
+  async function loadNotes(){
+    try{
+      const q=query(collection(db,"notes"),orderBy("createdAt","desc"));
+      const snap=await getDocs(q);
+      window.notesData=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderDashboard();renderAllNotes();updateSidebarSubjects();
+    }catch(e){
+      showToast('Firebase error. Check config.','error',6000);
+      useDemoData();
+    }
+  }
+
+  function useDemoData(){
+    const now=new Date();
+    window.notesData=[
+      {id:'d1',title:"Ohm's Law",content:"V = IR\nVoltage = Current × Resistance\nবৈদ্যুতিক সার্কিটের মৌলিক নিয়ম।",subject:"Physics",createdAt:{toDate:()=>new Date(now-86400000*2)},revisionDate:{toDate:()=>new Date(now-86400000)},revised:false},
+      {id:'d2',title:"Quadratic Formula",content:"x = (-b ± √(b²-4ac)) / 2a\nদ্বিঘাত সমীকরণ সমাধানের সূত্র।",subject:"Math",createdAt:{toDate:()=>new Date(now-86400000)},revisionDate:{toDate:()=>new Date(now+86400000)},revised:false},
+      {id:'d3',title:"Photosynthesis",content:"6CO₂ + 6H₂O + Light → C₆H₁₂O₆ + 6O₂\nসালোকসংশ্লেষণ প্রক্রিয়া।",subject:"Biology",createdAt:{toDate:()=>new Date(now-3600000*3)},revisionDate:{toDate:()=>new Date(now+86400000*2)},revised:true},
+    ];
+    renderDashboard();renderAllNotes();updateSidebarSubjects();
+    showToast('Demo mode — Firebase config যোগ করুন','info',5000);
+  }
+
+  /* ══ DASHBOARD ══ */
+  window.renderDashboard=function(){
+    const now=new Date(),total=window.notesData.length;
+    const due=window.notesData.filter(n=>!n.revised&&n.revisionDate?.toDate?.()<=now);
+    const recent=window.notesData.slice(0,6);
+    document.getElementById('stat-total').textContent=total;
+    document.getElementById('stat-revision').textContent=due.length;
+    document.getElementById('stat-revised').textContent=window.revisedToday;
+    document.getElementById('stat-ai').textContent=window.appSettings.aiQueryCount;
+    document.getElementById('sidebar-notes-count').textContent=total;
+    document.getElementById('sidebar-revision-count').textContent=due.length;
+    const panel=document.getElementById('revision-panel');
+    if(due.length>0){
+      panel.style.display='block';
+      document.getElementById('revision-panel-count').textContent=due.length+' notes';
+      document.getElementById('revision-list').innerHTML=due.slice(0,3).map(n=>`
+        <div class="revision-item">
+          <div class="revision-info">
+            <div class="revision-note-title">${esc(n.title)}</div>
+            <div class="revision-note-subject">${esc(n.subject)}</div>
+            <div class="revision-due-text">⏰ Due now</div>
+          </div>
+          <button class="btn btn-success btn-sm" onclick="openNoteDetail('${n.id}')">Revise Now</button>
+        </div>`).join('');
+    }else{panel.style.display='none';}
+    const rg=document.getElementById('recent-notes-grid');
+    rg.innerHTML=recent.length===0?`<div class="empty-state"><div class="empty-icon">🧠</div><div class="empty-title">No notes yet</div><div class="empty-text">Add your first note to get started</div></div>`:recent.map(n=>noteCardHTML(n)).join('');
+  };
+
+  /* ══ ALL NOTES ══ */
+  window.renderAllNotes=function(){
+    const search=document.getElementById('search-input')?.value?.toLowerCase()||'';
+    let f=window.notesData;
+    if(window.currentFilter!=='all')f=f.filter(n=>n.subject===window.currentFilter);
+    if(search)f=f.filter(n=>n.title.toLowerCase().includes(search)||n.content.toLowerCase().includes(search));
+    const grid=document.getElementById('all-notes-grid');
+    grid.innerHTML=f.length===0?`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div class="empty-title">No notes found</div><div class="empty-text">${search?'Try a different search term':'No notes in this subject'}</div></div>`:f.map(n=>noteCardHTML(n)).join('');
+  };
+
+  function noteCardHTML(n){
+    const s=getSS(n.subject),now=new Date();
+    const isDue=!n.revised&&n.revisionDate?.toDate?.()<=now;
+    const date=n.createdAt?.toDate?.()?.toLocaleDateString('bn-BD')||'';
+    return `<div class="note-card${isDue?' revision-due':''}${n.revised?' revised-card':''}" onclick="openNoteDetail('${n.id}')">
+      ${isDue?'<div class="revision-indicator"></div>':''}
+      <div class="note-card-top">
+        <div class="note-title">${esc(n.title)}</div>
+        <div class="note-actions"><button class="btn-icon" style="width:28px;height:28px;font-size:13px" onclick="event.stopPropagation();deleteNote('${n.id}')">🗑️</button></div>
+      </div>
+      <div class="note-content">${esc(n.content)}</div>
+      <div class="note-footer">
+        <span class="subject-badge" style="background:${s.bg};color:${s.color}"><span style="width:6px;height:6px;border-radius:50%;background:${s.dot};display:inline-block"></span>${esc(n.subject)}</span>
+        <span class="note-date">${date}</span>
+      </div>
+    </div>`;
+  }
+
+  /* ══ REVISION FULL ══ */
+  window.renderRevisionFull=function(){
+    const now=new Date();
+    const due=window.notesData.filter(n=>!n.revised&&n.revisionDate?.toDate?.()<=now);
+    const upcoming=window.notesData.filter(n=>!n.revised&&n.revisionDate?.toDate?.()>now);
+    const revised=window.notesData.filter(n=>n.revised);
+    const sec=(title,items,isDue)=>{
+      if(!items.length)return'';
+      return`<div style="margin-bottom:24px"><div class="section-header"><div class="section-title">${title}</div></div><div style="display:flex;flex-direction:column;gap:10px">${items.map(n=>{const s=getSS(n.subject),rd=n.revisionDate?.toDate?.()?.toLocaleDateString('bn-BD')||'';return`<div class="revision-item"><div class="revision-info"><div class="revision-note-title">${esc(n.title)}</div><div class="revision-note-subject" style="color:${s.color}">${esc(n.subject)}</div><div class="revision-due-text">${isDue?'⏰ Overdue':'📅 '+rd}</div></div><div style="display:flex;gap:8px"><button class="btn btn-ai btn-sm" onclick="openNoteDetail('${n.id}')">🤖 AI</button>${!n.revised?`<button class="btn btn-success btn-sm" onclick="markRevised('${n.id}')">✅ Done</button>`:'<span style="font-size:.8rem;color:var(--accent3)">✅ Revised</span>'}</div></div>`;}).join('')}</div></div>`;
+    };
+    let html=sec('⏰ Overdue',due,true)+sec('📅 Upcoming',upcoming,false)+sec('✅ Revised',revised,false);
+    if(!html)html=`<div class="empty-state"><div class="empty-icon">🎉</div><div class="empty-title">All caught up!</div><div class="empty-text">No revisions pending</div></div>`;
+    document.getElementById('revision-full-list').innerHTML=html;
+  };
+
+  /* ══ SIDEBAR SUBJECTS ══ */
+  function updateSidebarSubjects(){
+    const subjects=[...new Set(window.notesData.map(n=>n.subject))];
+    const container=document.getElementById('sidebar-subjects');
+    document.getElementById('count-all').textContent=window.notesData.length;
+    container.querySelectorAll('.subject-tag:not(:first-child)').forEach(t=>t.remove());
+    subjects.forEach(s=>{
+      const style=getSS(s),count=window.notesData.filter(n=>n.subject===s).length;
+      const el=document.createElement('div');el.className='subject-tag';
+      el.innerHTML=`<div class="tag-dot" style="background:${style.dot}"></div>${esc(s)}<span class="tag-count">${count}</span>`;
+      el.onclick=()=>filterBySubject(s,el);container.appendChild(el);
+    });
+    const tabs=document.getElementById('filter-tabs');
+    tabs.innerHTML=`<button class="filter-tab ${window.currentFilter==='all'?'active':''}" onclick="setFilter('all',this)">All</button>`;
+    subjects.forEach(s=>{
+      const btn=document.createElement('button');btn.className='filter-tab'+(window.currentFilter===s?' active':'');
+      btn.textContent=s;btn.onclick=()=>setFilter(s,btn);tabs.appendChild(btn);
+    });
+  }
+  window.filterBySubject=function(subject,el){
+    document.querySelectorAll('.subject-tag').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+    window.currentFilter=subject;renderAllNotes();showSection('notes',document.querySelector('.sidebar .nav-item:nth-child(2)'));
+  };
+  window.setFilter=function(subject,el){
+    window.currentFilter=subject;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderAllNotes();
+  };
+
+  /* ══ OPEN NOTE DETAIL ══ */
+  window.openNoteDetail=function(id){
+    const note=window.notesData.find(n=>n.id===id);if(!note)return;
+    window.currentNoteId=id;
+    const s=getSS(note.subject);
+    document.getElementById('detail-title').textContent=note.title;
+    document.getElementById('detail-content').textContent=note.content;
+    document.getElementById('detail-subject-badge').innerHTML=`<span style="background:${s.bg};color:${s.color};padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600">${esc(note.subject)}</span>`;
+    document.getElementById('detail-created').textContent='📅 '+(note.createdAt?.toDate?.()?.toLocaleString('en-BD')||'');
+    const rd=note.revisionDate?.toDate?.();
+    document.getElementById('detail-revision-date').textContent=rd?'⏰ Revision: '+rd.toLocaleDateString('en-BD'):'';
+    document.getElementById('ai-area').innerHTML='';
+    /* একবারই revise হবে */
+    const btn=document.getElementById('revise-btn');
+    if(note.revised){btn.innerHTML='✅ Already Revised';btn.disabled=true;}
+    else{btn.innerHTML='✅ Mark Revised';btn.disabled=false;}
+    document.getElementById('detail-modal').classList.add('open');
+  };
+
+  window.closeModal=function(id){document.getElementById(id)?.classList.remove('open');};
+
+  /* ══ SAVE NOTE ══ */
+  window.saveNote=async function(){
+    const title=document.getElementById('note-title').value.trim();
+    const content=document.getElementById('note-content').value.trim();
+    const subject=document.getElementById('note-subject').value;
+    if(!title||!content||!subject){showToast('সব ফিল্ড পূরণ করুন!','warn');return;}
+    const btn=document.getElementById('save-btn');
+    btn.innerHTML='<span class="spinner"></span> Saving...';btn.classList.add('btn-loading');
+    try{
+      const now=new Date(),delay=window.appSettings.revisionDelay||24;
+      await addDoc(collection(db,"notes"),{
+        title,content,subject,
+        createdAt:serverTimestamp(),
+        revisionDate:Timestamp.fromDate(new Date(now.getTime()+delay*3600000)),
+        revised:false
+      });
+      showToast('Note সফলভাবে সেভ হয়েছে! ✅','success');clearForm();await loadNotes();
+    }catch(e){showToast('Error: '+e.message,'error');}
+    finally{btn.innerHTML='<span>💾</span> Save Note';btn.classList.remove('btn-loading');}
+  };
+  window.clearForm=function(){document.getElementById('note-title').value='';document.getElementById('note-content').value='';document.getElementById('note-subject').value='';};
+
+  /* ══ DELETE ══ */
+  window.deleteNote=async function(id){
+    if(!confirm('এই note টি মুছে ফেলবেন?'))return;
+    try{
+      await deleteDoc(doc(db,"notes",id));
+      window.notesData=window.notesData.filter(n=>n.id!==id);
+      closeModal('detail-modal');renderDashboard();renderAllNotes();updateSidebarSubjects();
+      showToast('Note মুছে ফেলা হয়েছে।','info');
+    }catch(e){showToast('Delete failed: '+e.message,'error');}
+  };
+
+  /* ══ MARK REVISED — একবারই ══ */
+  window.markRevised=async function(id){
+    const note=window.notesData.find(n=>n.id===id);
+    if(!note)return;
+    if(note.revised){showToast('এই note ইতিমধ্যে revised হয়েছে।','warn');return;}
+    try{
+      await updateDoc(doc(db,"notes",id),{revised:true});
+      note.revised=true;window.revisedToday++;
+      await setDoc(doc(db,"settings","app"),{revisedToday:window.revisedToday},{merge:true});
+      closeModal('detail-modal');renderDashboard();renderAllNotes();renderRevisionFull();
+      showToast('Revision completed! 🎉','success');
+    }catch(e){showToast('Update failed: '+e.message,'error');}
+  };
+
+  /* ══ AI EXPLAINER — Groq key Firebase থেকে ══ */
+  window.explainWithAI=async function(id){
+    const note=window.notesData.find(n=>n.id===id);if(!note)return;
+    const KEY=window.appSettings.groqKey;
+    const area=document.getElementById('ai-area');
+    if(!KEY){
+      area.innerHTML=`<div class="ai-response" style="color:var(--warn);border-color:rgba(245,158,11,.3)">⚠️ <strong>Groq API Key সেট করা নেই।</strong><br><small style="margin-top:4px;display:block">Admin Panel → Settings → Groq API Key দিয়ে Save করুন।</small></div>`;
+      showToast('Admin Panel থেকে Groq API Key যোগ করুন','warn',5000);return;
+    }
+    area.innerHTML=`<div class="ai-thinking"><span>🤖 AI is thinking</span><div class="thinking-dots"><span></span><span></span><span></span></div></div>`;
+    window.appSettings.aiQueryCount++;
+    document.getElementById('stat-ai').textContent=window.appSettings.aiQueryCount;
+    try{await setDoc(doc(db,"settings","app"),{aiQueryCount:window.appSettings.aiQueryCount},{merge:true});}catch(e){}
+    const prompt=`You are a helpful tutor for Bengali students (SSC/HSC/Polytechnic level). Explain the following note clearly. Use both English and Bengali. Mention key points and give a simple example.
+
+Subject: ${note.subject}
+Title: ${note.title}
+Content: ${note.content}`;
+    try{
+      const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${KEY}`},
+        body:JSON.stringify({model:GROQ_MODEL,messages:[{role:'user',content:prompt}],max_tokens:700,temperature:0.7})
+      });
+      const data=await res.json();
+      if(data.choices?.[0]?.message?.content){
+        area.innerHTML=`<div class="ai-response"><strong style="color:#a78bfa;display:block;margin-bottom:8px">🤖 AI Explanation</strong>${data.choices[0].message.content.replace(/\n/g,'<br>')}</div>`;
+      }else if(data.error){
+        area.innerHTML=`<div class="ai-response" style="color:var(--danger)">❌ Groq Error: ${esc(data.error.message)}</div>`;
+      }else{
+        area.innerHTML=`<div class="ai-response" style="color:var(--danger)">❌ No response. Groq API key check করুন।</div>`;
+      }
+    }catch(e){area.innerHTML=`<div class="ai-response" style="color:var(--danger)">❌ Network Error: ${esc(e.message)}</div>`;}
+  };
+
+  window.focusSearch=function(){
+    showSection('notes',document.querySelector('.sidebar .nav-item:nth-child(2)'));
+    setTimeout(()=>document.getElementById('search-input')?.focus(),100);
+  };
+
+  document.querySelectorAll('.modal-overlay').forEach(o=>{
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+  });
+
+  /* ══ INIT ══ */
+  async function init(){await loadSettings();await loadNotes();}
+  init();
+</script>
+</body>
+</html>
+
+```
