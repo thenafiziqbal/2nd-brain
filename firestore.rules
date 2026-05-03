@@ -1,0 +1,237 @@
+rules_version = '2';
+
+// Firestore security rules — copy/paste into Firebase console → Firestore → Rules.
+//
+// Goals:
+//   1. Each student can only read/write THEIR OWN data.
+//   2. The shared AI questions cache is readable by everyone but writable
+//      only by signed-in users.
+//   3. System settings + packages are readable by everyone; writable only
+//      by configured admin emails (edit ADMIN_EMAILS below).
+//   4. Support chat: a user can read/write only their own thread; admins
+//      can read/write everything.
+//   5. Payment requests: user can create their own; admin can read/update.
+//   6. Social: friend requests, friendships, DMs, class communities,
+//      quizzes, schools, etc.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // === ADD YOUR ADMIN EMAILS HERE ===
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in [
+        'fztech166@gmail.com'
+      ];
+    }
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // Public-listing of every user's profile (name, classLevel, photoUrl,
+    // totalStudySeconds) is needed for the leaderboard and same-class
+    // friend search. Only the OWNER (or admin) can write.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
+      // Most subcollections are private to the user.
+      match /notes/{doc=**}        { allow read, write: if isOwner(uid) || isAdmin(); }
+      match /syllabus/{doc=**}     { allow read, write: if isOwner(uid) || isAdmin(); }
+      match /tasks/{doc=**}        { allow read, write: if isOwner(uid) || isAdmin(); }
+      match /study_logs/{doc=**}   { allow read, write: if isOwner(uid) || isAdmin(); }
+      // shared_with_me is the inbox — owner reads, ANY signed-in user
+      // can drop a doc here as long as `sharedByUid` matches their auth.
+      match /shared_with_me/{shareId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if signedIn() &&
+          request.resource.data.sharedByUid == request.auth.uid;
+        // After creation, both the recipient AND the original author can
+        // append to the blocks array (append-only is enforced client-side
+        // — admins moderate via /direct_messages logs).
+        allow update: if isOwner(uid) ||
+          (signedIn() && resource.data.sharedByUid == request.auth.uid) ||
+          isAdmin();
+        allow delete: if isOwner(uid) || isAdmin();
+      }
+      // Catch-all for any other private subcollection.
+      match /{sub}/{doc=**} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+    }
+
+    match /public_profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) || isAdmin();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // Shared syllabus AI questions cache.
+    match /syllabus_questions/{cacheId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // System settings + feature flags + packages.
+    match /system/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /system_private/{doc} {
+      allow read, write: if isAdmin();
+    }
+    match /packages/{pkg} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Support chat — user can read/write only their own messages.
+    match /support_chats/{msgId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if (signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.from == 'user')
+                    || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Payment requests.
+    match /payment_requests/{reqId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /user_tasks/{taskId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // Referral codes.
+    match /referrals/{code} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // === Social / gamification ===
+
+    // Schools registry — admin-managed; everyone reads.
+    match /schools/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /school_requests/{id} {
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.requestedByUid == request.auth.uid);
+      allow create: if request.resource.data.keys().hasOnly([
+        'name','type','district','upazila','requestedByUid','requestedByEmail','status','createdAt'
+      ]) && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // Friend requests — author OR target may read; only author may create;
+    // either party may update status (accept/reject).
+    match /friend_requests/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      ));
+      allow create: if signedIn() &&
+        request.resource.data.fromUid == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // Friendships — both parties read; either can create the doc when
+    // accepting; admin can read all (moderation).
+    match /friendships/{id} {
+      allow read: if isAdmin() || (signedIn() &&
+        request.auth.uid in resource.data.uids);
+      allow create: if signedIn() &&
+        request.auth.uid in request.resource.data.uids;
+      allow update: if isAdmin() || (signedIn() &&
+        request.auth.uid in resource.data.uids);
+      allow delete: if isAdmin() || (signedIn() &&
+        request.auth.uid in resource.data.uids);
+    }
+
+    // Direct messages — only the two participants can read/write; admin
+    // sees everything for moderation.
+    match /direct_messages/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      ));
+      allow create: if signedIn() &&
+        request.resource.data.fromUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Class communities — members can read/write messages; users can
+    // self-enroll into the members subcollection.
+    match /class_communities/{classKey} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+      match /members/{memberUid} {
+        allow read: if signedIn();
+        allow write: if isAdmin() || (signedIn() && request.auth.uid == memberUid);
+      }
+      match /messages/{msgId} {
+        allow read: if signedIn();
+        allow create: if signedIn() &&
+          request.resource.data.uid == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Quiz campaigns — public read; only admin writes.
+    match /quiz_campaigns/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Quiz attempts — owner creates; admin reads everything.
+    match /quiz_attempts/{id} {
+      allow read: if isAdmin() || (signedIn() &&
+        resource.data.uid == request.auth.uid);
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Global study logs (used by admin charts).
+    match /study_logs/{id} {
+      allow read: if isAdmin();
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Notices (admin push to all users).
+    match /notices/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admin-defined custom features for the user dashboard.
+    match /admin_features/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /admin_notifications/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /notif_disable_requests/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
