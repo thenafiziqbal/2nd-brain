@@ -1317,7 +1317,10 @@ function collectBuilderQuestions(){
     const correct = parseInt(card.querySelector('.qz-q-correct:checked')?.value || '0', 10);
     const explain = card.querySelector('.qz-q-explain')?.value.trim() || '';
     if(q && opts.length >= 2){
-      out.push({ q, options: opts, correct: Math.min(correct, opts.length-1), explain });
+      // The user-facing player at js/quiz.js reads the correct index from
+      // `q.a` (matching the legacy text-block parser below); keep both keys
+      // in sync so builder-created questions actually score correctly.
+      out.push({ q, options: opts, a: Math.min(correct, opts.length-1), explain });
     }
   });
   return out;

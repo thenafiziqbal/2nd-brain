@@ -19,8 +19,10 @@ export function saveSyllabusLocal(){
 
 export function addSyllabusTopic(payload){
   // Allow programmatic add (used by OCR import) or read from form.
+  // When wired as a click handler the argument is a MouseEvent — treat
+  // any DOM Event as "no payload" and fall through to the form fields.
   let subject, topic, note;
-  if(payload && typeof payload === 'object'){
+  if(payload && typeof payload === 'object' && !(payload instanceof Event)){
     subject = (payload.subject || '').trim();
     topic   = (payload.topic   || '').trim();
     note    = (payload.note    || '').trim();
