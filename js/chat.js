@@ -100,6 +100,10 @@ async function sendSupport(msg){
       const cred = await signInAnonymously(auth);
       state.user = cred.user;
       toast('Anonymous chat session started', 'info');
+      // The original subscribeSupport() call (in toggle/setMode) ran with
+      // no user attached, so it bailed out. Now that we have a uid, attach
+      // the listener so admin replies stream back live.
+      subscribeSupport();
     } catch(e){
       toast('Could not start anonymous session: ' + e.message, 'error');
       return;

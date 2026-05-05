@@ -39,6 +39,13 @@ export function initAuth(onReady){
   onAuthStateChanged(auth, async (user) => {
     state.user = user;
     if(user){
+      // Section 11 — anonymous sessions are used solely for support chat.
+      // Skip profile creation, referral codes, gate removal, and the full
+      // app boot so an anonymous uid does NOT get to bypass registration.
+      if(user.isAnonymous){
+        emit('auth-anonymous', user);
+        return;
+      }
       // Load (or seed) the profile doc that owns all per-user data.
       await ensureProfile(user);
       await ensureReferralCode(user.uid);

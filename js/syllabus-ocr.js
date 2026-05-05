@@ -30,8 +30,10 @@ async function runOcr(){
   }
   if(f.type === 'application/pdf'){
     // Browser-side PDF rendering is heavy; ask the user to provide images
-    // for now so we don't pull in pdfjs at runtime.
+    // for now so we don't pull in pdfjs at runtime. Without the early
+    // return we'd send raw PDF bytes labelled as image/jpeg to Gemini.
     toast('PDF এর প্রতিটি page এর image upload করুন (PDF parsing browser-এ ভারি)','warn');
+    return;
   }
 
   status.textContent = '⏳ Saving file locally + extracting chapters...';

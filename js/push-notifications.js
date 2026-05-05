@@ -11,11 +11,14 @@ let prayerTimer = null;
 let prayerWatchActive = false;
 
 export function initPushNotifications(){
+  // Register the prayer-update listener exactly once at startup so it
+  // doesn't accumulate every time auth-ready re-fires (e.g. logout/back-in
+  // without a page reload).
+  on('prayer-update', schedulePrayerNotification);
   // Show a friendly prompt the first time the user opens the app.
   on('auth-ready', () => {
     setTimeout(maybeShowPrompt, 4000);
     schedulePrayerNotification();
-    on('prayer-update', schedulePrayerNotification);
   });
   // Re-schedule when the tab becomes visible (timers can drift while
   // throttled in background tabs).
