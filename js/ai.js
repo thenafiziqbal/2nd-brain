@@ -49,7 +49,8 @@ async function chatGroq(key, messages, { model, max_tokens=700, temperature=0.7 
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function chatGemini(key, messages, { model='gemini-1.5-flash', max_tokens=700, temperature=0.7 } = {}){
+async function chatGemini(key, messages, { model, max_tokens=700, temperature=0.7 } = {}){
+  const useModel = model || state.appSettings?.geminiModel || 'gemini-1.5-flash';
   const contents = messages.filter(m => m.role !== 'system').map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }]
@@ -60,10 +61,35 @@ async function chatGemini(key, messages, { model='gemini-1.5-flash', max_tokens=
     generationConfig: { maxOutputTokens: max_tokens, temperature }
   };
   if(systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction.content }] };
-  const res = await fetch(GEMINI_URL(model, key), {
+  const res = await fetch(GEMINI_URL(useModel, key), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+// Gemini Vision call — used by the syllabus OCR feature. Accepts a base64
+// image (without the data:URL prefix), the MIME type, and a prompt.
+export async function geminiVision({ base64, mime, prompt }){
+  if(!state.apiKeys?.gemini) throw new Error('Gemini API key দরকার — Settings এ paste করুন');
+  const model = state.appSettings?.geminiVisionModel || state.appSettings?.geminiModel || 'gemini-1.5-flash';
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: prompt },
+        { inlineData: { mimeType: mime || 'image/jpeg', data: base64 } },
+      ],
+    }],
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.2 },
+  };
+  const res = await fetch(GEMINI_URL(model, state.apiKeys.gemini), {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body),
   });
   const data = await res.json();
   if(data.error) throw new Error(data.error.message);

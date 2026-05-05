@@ -37,6 +37,11 @@ import { initMobileUI } from './mobile-ui.js';
 import { initAdminFeatures } from './admin-features.js';
 import { initDashboardPreviews } from './dashboard-previews.js';
 import { initRevisionNotif, startRevisionSession, requestDisableNotif } from './revision-notif.js';
+import { initNoteImages } from './note-images.js';
+import { initSyllabusOcr } from './syllabus-ocr.js';
+import { initYoutubeCourses } from './youtube-courses.js';
+import { initPushNotifications } from './push-notifications.js';
+import { initOnboardingTour } from './onboarding-tour.js';
 import { toast } from './toast.js';
 
 // Boot.
@@ -67,6 +72,11 @@ initMobileUI();
 initAdminFeatures();
 initRevisionNotif();
 initDashboardPreviews();
+initNoteImages();
+initSyllabusOcr();
+initYoutubeCourses();
+initPushNotifications();
+initOnboardingTour();
 
 // Quick task shortcut on dashboard
 document.getElementById('quick-task-btn')?.addEventListener('click', quickAddTask);
@@ -115,7 +125,8 @@ function startAppFocusTracking(){
   appFocusStartedAt = Date.now();
   appFocusSeconds = 0;
   document.querySelector('.brain-hero-orb')?.classList.add('tracking');
-  toast('Focus tracking started', 'success');
+  document.getElementById('brain-focus-floater')?.classList.add('active');
+  toast('Focus tracking started — runs in background across all sections', 'success');
   clearInterval(appFocusTick);
   appFocusTick = setInterval(() => {
     if(document.hidden) return;
@@ -130,6 +141,7 @@ function stopAppFocusTracking(){
   appFocusActive = false;
   clearInterval(appFocusTick);
   document.querySelector('.brain-hero-orb')?.classList.remove('tracking');
+  document.getElementById('brain-focus-floater')?.classList.remove('active');
   const duration = Math.max(0, appFocusSeconds);
   updateBrainFocusLabel();
   if(duration >= 5){
@@ -141,13 +153,25 @@ function stopAppFocusTracking(){
 }
 
 function updateBrainFocusLabel(){
-  const el = document.getElementById('brain-time-label');
-  if(!el) return;
   const h = Math.floor(appFocusSeconds/3600);
   const m = Math.floor((appFocusSeconds%3600)/60);
   const s = appFocusSeconds%60;
-  el.textContent = `${appFocusActive ? 'Tracking ' : ''}${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const formatted = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const el = document.getElementById('brain-time-label');
+  if(el) el.textContent = `${appFocusActive ? 'Tracking ' : ''}${formatted}`;
+  const fl = document.getElementById('brain-focus-floater-time');
+  if(fl) fl.textContent = formatted;
 }
+
+// Floating widget controls — visible across all sections.
+document.getElementById('brain-focus-floater-stop')?.addEventListener('click', e => {
+  e.stopPropagation();
+  stopAppFocusTracking();
+});
+document.getElementById('brain-focus-floater')?.addEventListener('click', () => {
+  showSection('dashboard');
+  document.querySelector('.brain-hero-orb')?.scrollIntoView({ behavior:'smooth', block:'start' });
+});
 
 window.addEventListener('beforeunload', stopAppFocusTracking);
 
@@ -213,7 +237,9 @@ initAuth(async (user) => {
   paintPaymentView();
   paintCommunity();
   paintFooter();
-  maybeShowOnboardingTour();
+  // Onboarding tour is wired via initOnboardingTour() listening for
+  // 'auth-ready' (see onboarding-tour.js). The legacy modal-only welcome
+  // is still kept for fall-back if state.user.uid is missing in early auth.
   // Auto-enroll the user into their class community + start syncing
   // friends/shared-notes so notifications arrive in real time.
   autoEnrollClass();
@@ -248,17 +274,28 @@ function bindHeader(){
 }
 
 function populateClassDropdown(){
+  // Use admin-configured class levels (Section 5) when available; fall
+  // back to the hard-coded list. Re-runs every time settings change.
+  const levels = (state.appSettings?.classLevels && state.appSettings.classLevels.length)
+    ? state.appSettings.classLevels
+    : CLASS_LEVELS;
   const sel = document.getElementById('reg-class');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">-- Select Class / Level --</option>' +
-    CLASS_LEVELS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  // Settings has the same class dropdown.
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- Select Class / Level --</option>' +
+      levels.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    if(cur) sel.value = cur;
+  }
   const sset = document.getElementById('settings-class');
-  if(sset && !sset.options.length){
+  if(sset){
+    const cur = sset.value;
     sset.innerHTML = '<option value="">-- Select --</option>' +
-      CLASS_LEVELS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      levels.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    if(cur) sset.value = cur;
   }
 }
+// Repaint the class dropdown whenever the admin pushes new class levels.
+on('system-settings', () => populateClassDropdown());
 
 function populateRegisterSchoolDropdown(){
   const sel = document.getElementById('reg-institution-select');

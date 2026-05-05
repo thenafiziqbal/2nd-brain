@@ -58,3 +58,30 @@
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+
+/* Section 12 — mobile responsive tweaks for new features. */
+.yt-course-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.yt-course-card{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;cursor:pointer;transition:transform .12s,border-color .12s}
+.yt-course-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.yt-course-thumb{position:relative;width:80px;height:60px;border-radius:8px;overflow:hidden;background:var(--surface2);display:grid;place-items:center}
+.yt-course-thumb img{width:100%;height:100%;object-fit:cover;opacity:.6}
+.yt-course-play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.35);color:#fff}
+.yt-course-meta{min-width:0}
+.yt-course-title{font-weight:600;font-size:.95rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yt-course-sub{font-size:.78rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yt-player-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.yt-player-inner{display:grid;grid-template-columns:2fr 1fr;gap:0}
+#yt-course-player-frame{aspect-ratio:16/9}
+#yt-course-player-frame iframe{width:100%;height:100%;border:0;display:block}
+.yt-player-side{padding:14px;border-left:1px solid var(--border)}
+.qz-builder{display:grid;gap:10px}
+.qz-q-card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surface2)}
+.qz-q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.qz-q-opts{display:grid;gap:6px;margin:6px 0}
+.qz-q-opt{display:flex;gap:8px;align-items:center}
+.qz-q-opt input[type="text"]{flex:1}
+.sb-tour-highlight{outline:3px solid var(--accent)!important;outline-offset:3px!important;border-radius:8px;position:relative;z-index:10001!important}
+@media(max-width:768px){
+  .yt-player-inner{grid-template-columns:1fr}
+  .yt-player-side{border-left:0;border-top:1px solid var(--border)}
+}

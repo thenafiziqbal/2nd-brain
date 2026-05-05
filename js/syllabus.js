@@ -1,6 +1,6 @@
 // syllabus.js — per-user syllabus topics. Stored in localStorage for
 // offline-friendliness and lightness; synced to Firestore on demand.
-import { state, esc, icon, fmtDateTime, uid as makeUid } from './store.js';
+import { state, esc, icon, fmtDateTime, uid as makeUid, emit } from './store.js';
 import { toast } from './toast.js';
 
 const KEY = () => `sb-${state.user?.uid || 'guest'}-syllabus`;
@@ -9,20 +9,30 @@ export function loadSyllabus(){
   try { state.syllabus = JSON.parse(localStorage.getItem(KEY()) || '[]'); }
   catch(e){ state.syllabus = []; }
   renderSyllabus();
+  emit('syllabus-updated', state.syllabus);
 }
 
 export function saveSyllabusLocal(){
   localStorage.setItem(KEY(), JSON.stringify(state.syllabus));
+  emit('syllabus-updated', state.syllabus);
 }
 
-export function addSyllabusTopic(){
-  const subject = document.getElementById('syllabus-subject').value.trim();
-  const topic   = document.getElementById('syllabus-topic').value.trim();
-  const note    = document.getElementById('syllabus-note').value.trim();
+export function addSyllabusTopic(payload){
+  // Allow programmatic add (used by OCR import) or read from form.
+  let subject, topic, note;
+  if(payload && typeof payload === 'object'){
+    subject = (payload.subject || '').trim();
+    topic   = (payload.topic   || '').trim();
+    note    = (payload.note    || '').trim();
+  } else {
+    subject = document.getElementById('syllabus-subject')?.value.trim() || '';
+    topic   = document.getElementById('syllabus-topic')?.value.trim() || '';
+    note    = document.getElementById('syllabus-note')?.value.trim() || '';
+  }
   if(!subject || !topic){ toast('Subject ও Topic দিন','warn'); return; }
   state.syllabus.unshift({
     id: 'sy-' + makeUid(),
-    subject, topic, note, done: false,
+    subject, topic, chapter: topic, note, done: false,
     createdAt: new Date().toISOString(),
   });
   saveSyllabusLocal();

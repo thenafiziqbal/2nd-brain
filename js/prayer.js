@@ -1,7 +1,7 @@
 // prayer.js — prayer times with countdown.
 // Optimised: countdown tick only updates 3 text nodes per second (not the
 // whole grid). Grid is re-rendered every minute, not every second.
-import { state, esc, icon, fmtTime } from './store.js';
+import { state, esc, icon, fmtTime, emit } from './store.js';
 
 const ISLAM_NAMES = { Fajr:'ফজর', Sunrise:'সূর্যোদয়', Dhuhr:'যোহর', Asr:'আসর', Maghrib:'মাগরিব', Isha:'ইশা' };
 const ISLAM_ICONS = { Fajr:'sun', Sunrise:'sun', Dhuhr:'sun', Asr:'sun', Maghrib:'moon', Isha:'moon' };
@@ -64,6 +64,9 @@ export async function loadPrayer(){
       times = data.data.timings;
       paint();
       setText('prayer-location',`${profile.upazila || profile.district || 'Dhaka'}, Bangladesh`);
+      // Expose to other modules (push notifications, dashboard widgets).
+      state.prayer = { times, location: profile.upazila || profile.district || 'Dhaka' };
+      emit('prayer-update', state.prayer);
     }
   } catch(e){
     document.getElementById('prayer-grid').innerHTML =
@@ -130,6 +133,11 @@ function updateMini(){
   if(!next) return;
   setText('prayer-mini-name', names[next.name] + (next.tomorrow ? ' (Tomorrow)' : ''));
   setText('prayer-mini-time', fmtTime(parseTime(next.str)));
+  // Dashboard widget mirror.
+  setText('dash-prayer-name', names[next.name] + (next.tomorrow ? ' (Tomorrow)' : ''));
+  setText('dash-prayer-time', fmtTime(parseTime(next.str)));
+  const profile = state.profile || {};
+  setText('dash-prayer-loc', profile.upazila || profile.district || 'Bangladesh');
 }
 
 function startCountdown(){
@@ -145,6 +153,7 @@ function startCountdown(){
     setText('prayer-countdown-val', str);
     setText('prayer-countdown-name', names[next.name]);
     setText('prayer-mini-countdown', '⏳ ' + str);
+    setText('dash-prayer-countdown', '⏳ ' + str);
     if(diff === 0) notifyPrayer(next.name);
   }, 1000);
   // Repaint grid only every 60s.

@@ -4,7 +4,7 @@
  *   - Firestore traffic — never intercepted; the SDK handles its own offline cache.
  *   - Other GET requests — network-first with 2s fallback to cache.
  */
-const CACHE = 'sb-shell-v4';
+const CACHE = 'sb-shell-v5';
 const SHELL = [
   './',
   './index.html',
@@ -27,6 +27,8 @@ const SHELL = [
   './js/dashboard-previews.js','./js/dm.js','./js/friends.js','./js/leaderboard.js',
   './js/mobile-ui.js','./js/note-share.js','./js/quiz.js','./js/revision-notif.js',
   './js/schools.js','./js/study-tracker.js','./js/quota.js','./js/public-profile.js',
+  './js/idb-storage.js','./js/note-images.js','./js/syllabus-ocr.js','./js/tts.js',
+  './js/youtube-courses.js','./js/push-notifications.js','./js/onboarding-tour.js',
 ];
 
 self.addEventListener('install', e => {
@@ -81,5 +83,23 @@ self.addEventListener('fetch', event => {
       }
       return r;
     }).catch(() => caches.match(req))
+  );
+});
+
+// Notification click — focus an existing app tab or open a new one.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const path = event.notification?.data?.path || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type:'window', includeUncontrolled: true }).then(list => {
+      for(const c of list){
+        if(c.url.includes(self.location.origin)){
+          c.focus();
+          if(path && c.navigate) c.navigate(path).catch(()=>{});
+          return;
+        }
+      }
+      return self.clients.openWindow(path);
+    })
   );
 });

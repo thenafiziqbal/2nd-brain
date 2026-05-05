@@ -4,7 +4,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getAuth, setPersistence, browserLocalPersistence,
   onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, updateProfile
+  signInWithEmailAndPassword, signOut, updateProfile,
+  signInAnonymously, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -44,6 +45,7 @@ setPersistence(auth, browserLocalPersistence).catch(()=>{ /* ignore */ });
 export {
   onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile,
+  signInAnonymously, sendPasswordResetEmail,
   collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
   query, where, orderBy, limit, serverTimestamp, Timestamp,
   onSnapshot

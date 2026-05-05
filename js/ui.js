@@ -1,6 +1,6 @@
 // ui.js — section navigation, modal handling, FAQ accordion, delegation.
-import { state, esc, icon, subjectStyle, emit } from './store.js';
-import { renderDashboard, renderNotesGrid, renderRevisionFull, deleteNote, markRevised } from './notes.js';
+import { state, esc, icon, subjectStyle, emit, on } from './store.js';
+import { renderDashboard, renderNotesGrid, renderRevisionFull, deleteNote, markRevised, saveAiExplanation } from './notes.js';
 import { renderSyllabus, addSyllabusTopic, toggleSyllabusDone, deleteSyllabusTopic } from './syllabus.js';
 import { renderTasks, addTask, toggleTaskDone, deleteTask } from './tasks.js';
 import { renderFocusHistory } from './focus-timer.js';
@@ -8,6 +8,8 @@ import { setActiveChapter } from './ai-questions.js';
 import { aiChat } from './ai.js';
 import { syncSettingsForm } from './settings.js';
 import { toast } from './toast.js';
+import { speak, stop as ttsStop, ttsSupported } from './tts.js';
+import { paintNoteImagesInDetail } from './note-images.js';
 
 export function initUI(){
   // Section navigation (sidebar + bottom nav).
@@ -55,6 +57,34 @@ export function initUI(){
     ['note-title','note-content','note-subject'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   });
   document.getElementById('explain-ai-btn')?.addEventListener('click', explainCurrentNote);
+  document.getElementById('detail-tts-btn')?.addEventListener('click', listenToCurrentNote);
+  document.getElementById('detail-quiz-btn')?.addEventListener('click', generateQuizFromCurrentNote);
+
+  // Note → syllabus chapter picker (Section 15: contextual syllabus while
+  // writing notes). Re-populated whenever syllabus state changes.
+  const refreshNotePicker = () => {
+    const sel = document.getElementById('note-syllabus-pick');
+    if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— None —</option>' +
+      (state.syllabus || []).map(s =>
+        `<option value="${esc(s.id)}">${esc(s.subject || '')} — ${esc(s.chapter || s.topic || '')}</option>`
+      ).join('');
+    sel.value = cur || '';
+  };
+  refreshNotePicker();
+  document.getElementById('note-syllabus-pick')?.addEventListener('change', () => {
+    const sel = document.getElementById('note-syllabus-pick');
+    const ctx = document.getElementById('note-syllabus-context');
+    if(!ctx) return;
+    const item = (state.syllabus || []).find(s => s.id === sel.value);
+    if(!item){ ctx.style.display = 'none'; ctx.innerHTML = ''; return; }
+    ctx.style.display = 'block';
+    ctx.innerHTML = `<strong>${esc(item.subject)}</strong> — ${esc(item.chapter || item.topic)}` +
+      (item.note ? `<div style="margin-top:4px;color:var(--text2);font-size:.82rem">${esc(item.note)}</div>` : '');
+  });
+  // Re-paint when syllabus is updated.
+  on('syllabus-updated', refreshNotePicker);
 }
 
 export function showSection(section, el){
@@ -104,7 +134,16 @@ export function openNoteDetail(id){
     `<span class="subject-badge" style="background:${s.bg};color:${s.color}"><span class="dot"></span>${esc(n.subject)}</span>`;
   document.getElementById('detail-created').textContent = n.createdAt?.toDate?.()
     ? '📅 ' + n.createdAt.toDate().toLocaleString('en-BD') : '';
-  document.getElementById('ai-area').innerHTML = '';
+  // Paint any saved AI explanation immediately so the user doesn't need
+  // to click "Explain" again on each visit.
+  const area = document.getElementById('ai-area');
+  if(area){
+    area.innerHTML = n.aiExplanation
+      ? `<div class="ai-response"><strong style="color:var(--accent2)">${icon('ai','sm')} AI Explanation</strong><br>${esc(n.aiExplanation).replace(/\n/g,'<br>')}</div>`
+      : '';
+  }
+  // Locally-stored images (Section 15).
+  paintNoteImagesInDetail(n.localImageIds || []);
   const btn = document.getElementById('revise-btn');
   if(btn){
     btn.dataset.markRevised = id;
@@ -117,6 +156,8 @@ export function openNoteDetail(id){
   if(sh){
     sh.onclick = () => import('./note-share.js').then(m => m.openShareModal(id));
   }
+  // Stop any in-flight TTS when re-opening a different note.
+  ttsStop();
   document.getElementById('detail-modal')?.classList.add('open');
 }
 
@@ -136,6 +177,85 @@ async function explainCurrentNote(){
       .replace('{{content}}', note.content);
     const reply = await aiChat([{ role:'user', content: prompt }], { max_tokens: 700 });
     area.innerHTML = `<div class="ai-response"><strong style="color:var(--accent2)">${icon('ai','sm')} AI Explanation</strong><br>${esc(reply).replace(/\n/g,'<br>')}</div>`;
+    // Persist so the explanation is shown next time without a new AI call.
+    saveAiExplanation(id, reply);
+  } catch(e){
+    area.innerHTML = `<div class="ai-response" style="color:var(--danger)">${icon('warning','sm')} ${esc(e.message)}</div>`;
+  }
+}
+
+function listenToCurrentNote(){
+  if(!ttsSupported()){ toast('Browser TTS supports করে না', 'warn'); return; }
+  const id = state.currentNoteId;
+  const note = state.notes.find(n => n.id === id);
+  if(!note) return;
+  // If we're already speaking, stop instead.
+  // (Web Speech API doesn't expose a clean isSpeaking; use our flag.)
+  const btn = document.getElementById('detail-tts-btn');
+  if(btn?.classList.contains('btn-loading')){
+    ttsStop(); btn.classList.remove('btn-loading'); return;
+  }
+  const ai = note.aiExplanation ? '\n\n' + note.aiExplanation : '';
+  speak(`${note.title}.\n${note.content}${ai}`);
+  btn?.classList.add('btn-loading');
+  // Auto-clear loading state after estimated duration.
+  const totalChars = (note.title + note.content + ai).length;
+  setTimeout(() => btn?.classList.remove('btn-loading'), Math.min(60000, 60 * Math.ceil(totalChars / 12)));
+}
+
+async function generateQuizFromCurrentNote(){
+  const id = state.currentNoteId;
+  const note = state.notes.find(n => n.id === id);
+  if(!note) return;
+  const area = document.getElementById('ai-area');
+  area.innerHTML = `<div class="ai-thinking">${icon('sparkles','sm')} Generating quiz from this note
+    <div class="thinking-dots"><span></span><span></span><span></span></div></div>`;
+  try {
+    const cls = state.profile?.classLevel || 'student';
+    const sys = `You are an exam-style quiz generator for Bengali students.
+Class: ${cls}. Subject: ${note.subject}. Note title: ${note.title}.
+Return STRICT JSON only — no markdown — with this schema:
+{"questions":[{"q":"...","options":["A","B","C","D"],"correct":0,"explain":"..."}]}
+Generate 5 multiple-choice questions covering the note. Mix Bengali & English where natural.`;
+    const usr = `Note content:\n${note.content}\n\n${note.aiExplanation ? 'AI Explanation:\n'+note.aiExplanation : ''}`;
+    const reply = await aiChat([
+      { role:'system', content: sys }, { role:'user', content: usr },
+    ], { max_tokens: 1200 });
+    let qs;
+    try {
+      const m = reply.match(/\{[\s\S]*\}/);
+      qs = JSON.parse(m ? m[0] : reply).questions || [];
+    } catch(e){ qs = []; }
+    if(!qs.length){
+      area.innerHTML = `<div class="ai-response" style="color:var(--danger)">${icon('warning','sm')} Could not parse quiz output. Try again.</div>`;
+      return;
+    }
+    area.innerHTML = `<div class="ai-response"><strong>${icon('sparkles','sm')} Quiz from this note</strong></div>` +
+      qs.map((q, i) => {
+        const optsHtml = (q.options || []).map((o, oi) => `
+          <label class="note-quiz-opt"><input type="radio" name="qz-${i}" value="${oi}"/> <span>${esc(o)}</span></label>
+        `).join('');
+        return `<div class="note-quiz-q" data-correct="${q.correct||0}">
+          <div class="note-quiz-title"><strong>Q${i+1}.</strong> ${esc(q.q || '')}</div>
+          <div class="note-quiz-opts">${optsHtml}</div>
+          <div class="note-quiz-feedback" hidden></div>
+          <div style="font-size:.78rem;color:var(--text2);margin-top:4px;display:none" class="note-quiz-explain">${esc(q.explain || '')}</div>
+        </div>`;
+      }).join('') + `<button class="btn btn-success btn-sm" id="note-quiz-check">Check answers</button>`;
+    document.getElementById('note-quiz-check')?.addEventListener('click', () => {
+      area.querySelectorAll('.note-quiz-q').forEach(card => {
+        const correct = parseInt(card.dataset.correct || '0', 10);
+        const sel = card.querySelector('input[type=radio]:checked');
+        const fb = card.querySelector('.note-quiz-feedback');
+        const ex = card.querySelector('.note-quiz-explain');
+        if(!sel){ fb.hidden = false; fb.style.color = 'var(--warn)'; fb.textContent = 'No answer'; return; }
+        const ok = parseInt(sel.value, 10) === correct;
+        fb.hidden = false;
+        fb.style.color = ok ? 'var(--accent3)' : 'var(--danger)';
+        fb.textContent = ok ? 'Correct' : 'Wrong';
+        if(ex) ex.style.display = 'block';
+      });
+    });
   } catch(e){
     area.innerHTML = `<div class="ai-response" style="color:var(--danger)">${icon('warning','sm')} ${esc(e.message)}</div>`;
   }

@@ -1,7 +1,7 @@
 // chat.js — floating AI chat panel + support chat (user → admin).
 import { state, esc, icon } from './store.js';
 import { aiChat, isTrialActive, trialDaysLeft } from './ai.js';
-import { db, addDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp } from './firebase-init.js';
+import { db, addDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, auth, signInAnonymously } from './firebase-init.js';
 import { toast } from './toast.js';
 
 const history = []; // last N messages with the AI
@@ -91,12 +91,25 @@ function paintSupportEmpty(){
 }
 
 async function sendSupport(msg){
-  if(!state.user){ toast('Login first','warn'); return; }
   if(!state.online){ toast('Internet নেই — পরে চেষ্টা করুন','warn'); return; }
+  // Section 11 — let logged-out visitors talk to support too. We sign
+  // them in anonymously so the message gets a stable uid and Firestore
+  // security rules can still scope them to their own conversation.
+  if(!state.user){
+    try {
+      const cred = await signInAnonymously(auth);
+      state.user = cred.user;
+      toast('Anonymous chat session started', 'info');
+    } catch(e){
+      toast('Could not start anonymous session: ' + e.message, 'error');
+      return;
+    }
+  }
   try {
     await addDoc(collection(db, 'support_chats'), {
       uid: state.user.uid,
-      name: state.profile?.name || state.user.email,
+      anonymous: !!state.user.isAnonymous,
+      name: state.profile?.name || state.user.email || 'Guest',
       from: 'user',
       text: msg,
       read: false,

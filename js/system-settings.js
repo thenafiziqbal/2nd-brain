@@ -21,6 +21,7 @@ export function watchSystemSettings(){
     state.appSettings = d;
     state.features = d.features || {};
     applyFeatureFlags();
+    applySeoMeta(d);
     emit('system-settings', d);
   }, err => console.warn('system settings watch failed', err)));
 
@@ -63,4 +64,25 @@ function applyFeatureFlags(){
       el.style.display = on === false ? 'none' : '';
     });
   });
+}
+
+// Section 5 — apply admin-controlled SEO tags to the live document.
+function applySeoMeta(d){
+  if(!d) return;
+  if(d.seoTitle){ document.title = d.seoTitle; }
+  setMeta('name','description', d.seoDescription || '');
+  setMeta('name','keywords', d.seoKeywords || '');
+  setMeta('property','og:title', d.seoTitle || '');
+  setMeta('property','og:description', d.seoDescription || '');
+  if(d.seoOgImage) setMeta('property','og:image', d.seoOgImage);
+}
+function setMeta(attr, name, value){
+  if(!value) return;
+  let el = document.querySelector(`meta[${attr}="${name}"]`);
+  if(!el){
+    el = document.createElement('meta');
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', value);
 }

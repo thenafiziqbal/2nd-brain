@@ -14,9 +14,13 @@ import {
 } from './firebase-init.js';
 import { state, esc, icon } from './store.js';
 import { toast } from './toast.js';
+import { notify, isPushReady } from './push-notifications.js';
 
 let unsub = null;
 let allCampaigns = [];
+// Track which campaigns we've already notified about so we don't spam the
+// user every time the snapshot fires.
+const notifiedCampaigns = new Set();
 
 export function initQuiz(){
   // Bound by app.js routing — nothing to bind here.
@@ -28,6 +32,7 @@ export function startQuiz(){
     query(collection(db,'quiz_campaigns'), orderBy('startAt','desc')),
     snap => {
       allCampaigns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      maybeNotifyNewCampaigns(allCampaigns);
       paint();
     },
     err => {
@@ -142,3 +147,31 @@ async function takeQuiz(id){
   overlay.classList.add('open');
   render();
 }
+
+
+// Section 8 — when a new active campaign appears (matches user class), surface
+// a desktop/mobile push notification. The first snapshot just seeds the
+// "seen" set so we don't notify for everything on page load; subsequent
+// campaigns fire one notification each.
+let firstQuizSnapshot = true;
+function maybeNotifyNewCampaigns(campaigns){
+  if(firstQuizSnapshot){
+    campaigns.forEach(c => notifiedCampaigns.add(c.id));
+    firstQuizSnapshot = false;
+    return;
+  }
+  if(!isPushReady()) return;
+  const cls = state.profile?.classLevel;
+  for(const c of campaigns){
+    if(notifiedCampaigns.has(c.id)) continue;
+    notifiedCampaigns.add(c.id);
+    if(c.active === false) continue;
+    if(c.classLevel && c.classLevel !== "all" && cls && c.classLevel !== cls) continue;
+    notify("📝 New quiz: " + (c.title || "Quiz"), {
+      body: c.category ? `Category: ${c.category}` : "Tap to start the new quiz now.",
+      tag: `quiz-${c.id}`,
+      data: { path: "/?section=quiz" },
+    });
+  }
+}
+

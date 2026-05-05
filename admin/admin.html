@@ -151,7 +151,15 @@
           <div class="form-group"><label>End (datetime)</label><input id="qz-end" type="datetime-local"/></div>
           <div class="form-group"><label>Active</label><select id="qz-active"><option value="true">Yes</option><option value="false">No</option></select></div>
         </div>
-        <div class="form-group"><label>Questions</label><textarea id="qz-json" style="min-height:180px;font-family:monospace" placeholder="Question title
+        <div class="form-group">
+          <label>Questions <small style="color:var(--text2);font-weight:400">(add as many as you want via the form below)</small></label>
+          <div id="qz-builder" class="qz-builder"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" id="qz-builder-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add question</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="qz-toggle-json-btn">Show advanced text mode</button>
+          </div>
+        </div>
+        <div class="form-group" id="qz-json-group" style="display:none"><label>Advanced — Text / JSON fallback</label><textarea id="qz-json" style="min-height:180px;font-family:monospace" placeholder="Question title
 A. First option
 B. Second option
 C. Third option
@@ -374,6 +382,10 @@ Blank line দিয়ে next question লিখুন. JSON format-ও support �
               <div class="form-group"><label>Revision delay (hours)</label><input type="number" id="as-rev"/></div>
               <div class="form-group"><label>Default Groq Model</label><input id="as-groq-model" placeholder="llama-3.1-8b-instant"/></div>
             </div>
+            <div class="form-row">
+              <div class="form-group"><label>Default Gemini Model (chat)</label><input id="as-gemini-model" placeholder="gemini-1.5-flash"/></div>
+              <div class="form-group"><label>Default Gemini Vision Model (OCR)</label><input id="as-gemini-vision-model" placeholder="gemini-1.5-flash"/></div>
+            </div>
             <div class="form-group"><label>Default Groq API Key (private)</label><input id="as-groq-key" placeholder="gsk_..."/></div>
             <div class="form-group"><label>User tutorial video URL</label><input id="as-tutorial-url" placeholder="https://youtube.com/..."/></div>
             <div class="form-group"><label>imgbb API Key (for user avatar uploads — free at api.imgbb.com)</label><input id="as-imgbb-key" placeholder="abc123..."/></div>
@@ -385,7 +397,35 @@ Blank line দিয়ে next question লিখুন. JSON format-ও support �
               <textarea id="as-sys-chat" style="min-height:130px"></textarea></div>
           </div>
         </div>
-        <button class="btn btn-success" id="as-save-btn"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save</button>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-info"/></svg> SEO &amp; Meta tags</div>
+        <div class="form-row">
+          <div class="form-group"><label>SEO title (HTML &lt;title&gt;)</label><input id="as-seo-title" placeholder="Second Brain — Smart Note App"/></div>
+          <div class="form-group"><label>SEO description (meta)</label><input id="as-seo-desc" placeholder="Notes, Revision, Prayer Times..."/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Open Graph image URL</label><input id="as-seo-og" placeholder="https://..."/></div>
+          <div class="form-group"><label>Keywords (comma separated)</label><input id="as-seo-keywords"/></div>
+        </div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-shield"/></svg> Cloudflare Turnstile (sign-up captcha)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Site key (public)</label><input id="as-turnstile-site"/></div>
+          <div class="form-group"><label>Secret key (server-side only — keep blank if no backend yet)</label><input id="as-turnstile-secret" type="password"/></div>
+        </div>
+        <div class="form-group"><label>Enable Turnstile on registration?</label>
+          <select id="as-turnstile-enable"><option value="false">No</option><option value="true">Yes</option></select>
+        </div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-syllabus"/></svg> Class Management</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Comma-separated list of classes / levels shown in the registration dropdown.</p>
+        <div class="form-group"><label>Class levels</label><textarea id="as-classes" style="min-height:60px" placeholder="Class 6, Class 7, Class 8, Class 9, Class 10, SSC, HSC, University"></textarea></div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-gift"/></svg> Smart Referral Reward</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">When a referred user purchases one of these packages, the referrer gets a 30-day reward. Leave blank to credit on every package.</p>
+        <div class="form-group"><label>Eligible packages</label><div id="as-referral-pkg-list" style="display:flex;flex-wrap:wrap;gap:8px;font-size:.85rem"></div></div>
+
+        <button class="btn btn-success" id="as-save-btn" style="margin-top:14px"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save</button>
       </div>
     </section>
 

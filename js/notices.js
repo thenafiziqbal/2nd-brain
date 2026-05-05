@@ -6,8 +6,10 @@
 // require a Firestore write per dismissal.
 import { db, doc, onSnapshot } from './firebase-init.js';
 import { state, esc, icon, emit } from './store.js';
+import { notify, isPushReady } from './push-notifications.js';
 
 const STORE_KEY = 'sb-dismissed-notices';
+const NOTIFIED_KEY = 'sb-pushed-notices';
 
 function dismissed(){
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
@@ -23,8 +25,25 @@ export function watchNotices(){
     const items = snap.exists() ? (snap.data().items || []) : [];
     state.notices = items;
     paintNotices();
+    maybePushNotify(items);
     emit('notices', items);
   }, err => console.warn('notices watch failed', err));
+}
+
+// Section 3 — surface admin announcements as OS-level push notifications.
+// Each notice id is only pushed once per device (tracked in localStorage).
+function maybePushNotify(items){
+  if(!isPushReady()) return;
+  let seen;
+  try { seen = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); }
+  catch(e){ seen = []; }
+  const seenSet = new Set(seen);
+  const fresh = items.filter(n => n.active !== false && !seenSet.has(n.id));
+  for(const n of fresh){
+    notify(n.title || 'Announcement', { body: n.body || '', tag: 'notice-' + n.id, data:{ path:'/' } });
+    seen.push(n.id);
+  }
+  if(fresh.length) localStorage.setItem(NOTIFIED_KEY, JSON.stringify(seen.slice(-200)));
 }
 
 export function paintNotices(){

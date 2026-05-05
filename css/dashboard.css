@@ -30,6 +30,37 @@
 .brain-stat strong{color:var(--text);font-weight:800}
 .brain-time-label{position:absolute;top:14px;right:18px;font-size:.78rem;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:4px}
 
+/* Dashboard prayer widget */
+.dashboard-prayer-widget{display:flex;flex-direction:column}
+.dash-prayer-body{display:flex;flex-direction:column;gap:6px;padding:6px 4px 0}
+.dash-prayer-time{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--accent)}
+.dash-prayer-countdown{font-size:.85rem;color:var(--warn);font-weight:700}
+.dash-prayer-loc{font-size:.75rem;color:var(--text2)}
+
+/* Background focus floating timer (Section 2) */
+#brain-focus-floater{
+  position:fixed;bottom:90px;right:18px;z-index:1500;
+  display:none;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  padding:8px 14px;box-shadow:var(--shadow);font-size:.82rem;color:var(--text);
+  cursor:pointer;
+}
+#brain-focus-floater.active{display:inline-flex}
+#brain-focus-floater .pulse{width:8px;height:8px;border-radius:50%;background:var(--accent3);box-shadow:0 0 0 0 rgba(6,214,160,.6);animation:pulse-track 1.4s infinite}
+#brain-focus-floater .ft{font-family:'Syne',sans-serif;font-weight:700;color:var(--accent3)}
+#brain-focus-floater button{border:0;background:transparent;color:var(--danger);cursor:pointer;font-weight:700;padding:0 4px}
+@media (max-width:700px){
+  #brain-focus-floater{bottom:78px;right:8px;font-size:.75rem;padding:6px 10px}
+}
+
+/* Mobile-friendly task add bar (Section 1) */
+@media (max-width:640px){
+  .dashboard-task-shortcut{flex-wrap:wrap}
+  .dashboard-task-shortcut input,
+  .dashboard-task-shortcut .task-time-input{flex:1 1 100%;min-width:0}
+  .dashboard-task-shortcut #quick-task-btn{width:100%}
+}
+
 /* Stats grid */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .stat-card{

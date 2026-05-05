@@ -11,9 +11,10 @@ import {
   auth, db, userDoc,
   onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile,
+  sendPasswordResetEmail,
   doc, setDoc, getDoc, serverTimestamp
 } from './firebase-init.js';
-import { state, emit, TRIAL_MS, icon } from './store.js';
+import { state, emit, on, TRIAL_MS, icon } from './store.js';
 import { ensureReferralCode, resolveReferrer } from './referral.js';
 import { toast } from './toast.js';
 import { syncPublicProfile } from './public-profile.js';
@@ -137,10 +138,39 @@ function bindForms(){
     e.preventDefault();
     handleLogin();
   });
+  document.getElementById('forgot-password-btn')?.addEventListener('click', handleForgotPassword);
   document.getElementById('register-form')?.addEventListener('submit', e => {
     e.preventDefault();
     handleRegister();
   });
+  // Lazy-mount Cloudflare Turnstile if the admin enabled it.
+  setupTurnstile();
+}
+
+function setupTurnstile(){
+  const tryMount = () => {
+    const enabled = state.appSettings?.turnstileEnabled;
+    const site = state.appSettings?.turnstileSiteKey;
+    const mount = document.getElementById('turnstile-mount');
+    if(!mount) return;
+    if(!enabled || !site){ mount.innerHTML = ''; return; }
+    if(mount.dataset.ready === '1') return;
+    mount.dataset.ready = '1';
+    if(!document.querySelector('script[data-turnstile]')){
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true; s.defer = true;
+      s.dataset.turnstile = '1';
+      document.head.appendChild(s);
+    }
+    mount.innerHTML = `<div class="cf-turnstile" data-sitekey="${site}"></div>`;
+  };
+  // Try once now (in case settings already loaded), and on each settings update.
+  setTimeout(tryMount, 800);
+  document.addEventListener('app:system-settings', tryMount);
+  // store.js's emit fires custom DOM events too via on() listeners so we
+  // also subscribe with the in-memory emitter.
+  on('system-settings', tryMount);
 }
 
 function switchAuth(mode){
@@ -149,6 +179,18 @@ function switchAuth(mode){
     document.getElementById(m+'-form')?.classList.toggle('active', m===mode);
   });
   document.getElementById('auth-error')?.classList.remove('show');
+}
+
+async function handleForgotPassword(){
+  const email = (document.getElementById('login-email')?.value || '').trim().toLowerCase()
+    || prompt('Email দিন (password reset link পাঠানো হবে):');
+  if(!email) return;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast('Password reset email পাঠানো হয়েছে — inbox check করুন', 'success', 6000);
+  } catch(e){
+    toast('Password reset failed: ' + (e.message || prettyAuthError(e)), 'error');
+  }
 }
 
 async function handleLogin(){

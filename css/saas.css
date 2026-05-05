@@ -74,8 +74,9 @@
   background:var(--surface2);border:1px solid var(--border);border-radius:10px;
   padding:10px 12px;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;
 }
-.pay-method:hover{border-color:var(--accent)}
-.pay-method.active{border-color:var(--pay-color,var(--accent));background:rgba(59,130,246,.08)}
+.pay-method:hover{border-color:var(--pay-color,var(--accent));box-shadow:0 0 0 2px color-mix(in srgb, var(--pay-color,var(--accent)) 18%, transparent)}
+.pay-method.active{border-color:var(--pay-color,var(--accent));background:color-mix(in srgb, var(--pay-color,var(--accent)) 10%, transparent);box-shadow:0 0 0 2px color-mix(in srgb, var(--pay-color,var(--accent)) 30%, transparent)}
+.pay-method.active .pay-method-name{color:var(--pay-color,var(--accent))}
 .pay-method-logo{width:34px;height:34px;object-fit:contain;border-radius:8px;background:#fff;padding:3px;float:left;margin-right:8px}
 .pay-method-name{font-weight:700;font-size:.92rem;color:var(--text)}
 .pay-method-num{font-size:.8rem;color:var(--text2);font-family:ui-monospace,Menlo,monospace}

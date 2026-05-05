@@ -7,6 +7,7 @@ import {
 } from './firebase-init.js';
 import { state, esc, icon, fmtDateTime, subjectStyle } from './store.js';
 import { toast, confirmDialog } from './toast.js';
+import { getPendingImageIds, clearPendingImages } from './note-images.js';
 
 export async function loadNotes(){
   if(!state.user){ state.notes = []; renderAll(); return; }
@@ -193,9 +194,14 @@ export async function saveNote(){
   btn?.classList.add('btn-loading');
   const delay = state.appSettings?.revisionDelay || 24;
   const now = new Date();
+  // Local image attachments (saved in IndexedDB only — refs stored in Firestore).
+  const localImageIds = getPendingImageIds();
+  const syllabusId = document.getElementById('note-syllabus-pick')?.value || null;
   try {
     await addDoc(userCol(state.user.uid, 'notes'), {
       title, content, subject,
+      localImageIds,
+      syllabusTopicId: syllabusId,
       createdAt: serverTimestamp(),
       revisionDate: Timestamp.fromDate(new Date(now.getTime() + delay*3600000)),
       revised: false,
@@ -204,6 +210,10 @@ export async function saveNote(){
     document.getElementById('note-title').value = '';
     document.getElementById('note-content').value = '';
     document.getElementById('note-subject').value = '';
+    if(document.getElementById('note-syllabus-pick')) document.getElementById('note-syllabus-pick').value = '';
+    const ctx = document.getElementById('note-syllabus-context');
+    if(ctx) ctx.style.display = 'none';
+    clearPendingImages();
     await loadNotes();
   } catch(e){
     toast('Save failed: ' + e.message, 'error');
@@ -214,12 +224,34 @@ export async function deleteNote(id){
   if(!state.user) return;
   if(!await confirmDialog('Delete this note?')) return;
   try {
+    // Clean up locally-stored images so they don't pile up.
+    const note = state.notes.find(n => n.id === id);
+    if(note && Array.isArray(note.localImageIds) && note.localImageIds.length){
+      try {
+        const { idbDelete } = await import('./idb-storage.js');
+        await Promise.all(note.localImageIds.map(imgId => idbDelete('note-images', imgId)));
+      } catch(e){ /* best effort */ }
+    }
     await deleteDoc(doc(db, 'users', state.user.uid, 'notes', id));
     state.notes = state.notes.filter(n => n.id !== id);
     renderAll();
     document.getElementById('detail-modal')?.classList.remove('open');
     toast('Note deleted', 'info');
   } catch(e){ toast('Delete failed: ' + e.message, 'error'); }
+}
+
+export async function saveAiExplanation(id, explanation){
+  if(!state.user || !id || !explanation) return;
+  const note = state.notes.find(n => n.id === id);
+  if(!note) return;
+  try {
+    await updateDoc(doc(db, 'users', state.user.uid, 'notes', id), {
+      aiExplanation: explanation,
+      aiExplainedAt: serverTimestamp(),
+    });
+    note.aiExplanation = explanation;
+    note.aiExplainedAt = new Date();
+  } catch(e){ console.warn('saveAiExplanation failed', e); }
 }
 
 export async function markRevised(id){

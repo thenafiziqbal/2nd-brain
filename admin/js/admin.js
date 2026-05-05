@@ -5,7 +5,7 @@
 // Support inbox, AI cache.
 import {
   auth, db, ADMIN_EMAILS,
-  onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
   query, orderBy, where, onSnapshot, serverTimestamp
 } from './admin-firebase.js';
@@ -33,6 +33,11 @@ const FEATURES = [
   {k:'tasks',     label:'Tasks'},
   {k:'aiExplain', label:'AI Explain'},
   {k:'aiChat',    label:'AI Chat'},
+  // Section 13 — voice features (per-package limits).
+  {k:'tts',       label:'TTS (read aloud)'},
+  {k:'voiceTyping', label:'Voice typing'},
+  // Section 4 — YouTube playlist courses.
+  {k:'courses',   label:'YouTube Courses'},
 ];
 const SOCIAL_PLATFORMS = ['facebook','telegram','whatsapp','youtube','instagram','twitter','discord','linkedin','website'];
 const COMMUNITY_PLATFORMS = ['facebook','telegram','whatsapp','discord','community'];
@@ -285,11 +290,13 @@ async function loadUsers(){
         <td>
           <button class="btn btn-sm btn-success" data-mark-pro="${d.id}">Mark Pro</button>
           <button class="btn btn-sm btn-warn" data-mark-trial="${d.id}">Reset Trial</button>
+          <button class="btn btn-sm btn-secondary" data-pw-reset="${esc(u.email||'')}" ${u.email ? '' : 'disabled'}>Send password reset</button>
         </td>
       </tr>`;
     }).join('');
     tbody.querySelectorAll('[data-mark-pro]').forEach(b => b.addEventListener('click', () => markPlan(b.dataset.markPro,'pro')));
     tbody.querySelectorAll('[data-mark-trial]').forEach(b => b.addEventListener('click', () => resetTrial(b.dataset.markTrial)));
+    tbody.querySelectorAll('[data-pw-reset]').forEach(b => b.addEventListener('click', () => sendUserPasswordReset(b.dataset.pwReset)));
   } catch(e){ tbody.innerHTML = `<tr><td colspan="7" class="empty">${e.message}</td></tr>`; }
 }
 async function markPlan(uid, plan){
@@ -305,6 +312,14 @@ async function resetTrial(uid){
   await updateDoc(doc(db,'users',uid), { plan:'trial', trialStart: Date.now(), trialEnd: Date.now()+ms });
   toast(`Trial reset (${days} days)`);
   loadUsers(); loadKPIs();
+}
+async function sendUserPasswordReset(email){
+  if(!email){ toast('User has no email on file', 'error'); return; }
+  if(!confirm(`Send password reset link to ${email}?`)) return;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast('Password reset email sent to ' + email);
+  } catch(e){ toast('Failed: ' + e.message, 'error'); }
 }
 
 // ============ FEATURE TOGGLES ============
@@ -343,9 +358,23 @@ async function loadAppSettings(){
   $('as-groq-key').value = privateSettings.groqKey || '';
   $('as-imgbb-key').value = privateSettings.imgbbKey || '';
   $('as-groq-model').value = d.groqModel || 'llama-3.1-8b-instant';
+  if($('as-gemini-model')) $('as-gemini-model').value = d.geminiModel || 'gemini-1.5-flash';
+  if($('as-gemini-vision-model')) $('as-gemini-vision-model').value = d.geminiVisionModel || 'gemini-1.5-flash';
   if($('as-tutorial-url')) $('as-tutorial-url').value = d.tutorialVideoUrl || '';
   $('as-sys-notes').value = d.sysNotes || '';
   $('as-sys-chat').value = d.sysChat || '';
+  // Section 5 — SEO + Cloudflare Turnstile + class management.
+  if($('as-seo-title')) $('as-seo-title').value = d.seoTitle || '';
+  if($('as-seo-desc')) $('as-seo-desc').value = d.seoDescription || '';
+  if($('as-seo-og')) $('as-seo-og').value = d.seoOgImage || '';
+  if($('as-seo-keywords')) $('as-seo-keywords').value = d.seoKeywords || '';
+  if($('as-turnstile-site')) $('as-turnstile-site').value = d.turnstileSiteKey || '';
+  if($('as-turnstile-enable')) $('as-turnstile-enable').value = d.turnstileEnabled ? 'true' : 'false';
+  if($('as-classes')) $('as-classes').value = (d.classLevels || []).join(', ');
+  if($('as-turnstile-secret')) $('as-turnstile-secret').value = privateSettings.turnstileSecret || '';
+  // Section 9 — referral-eligible packages picker. Painted from current
+  // /packages collection so the admin can tick which ones reward referrers.
+  await paintReferralPackagePicker(d.referralRewardPackages || []);
   $('as-save-btn').addEventListener('click', async () => {
     await setDoc(ref, {
       appName: $('as-name').value.trim(),
@@ -356,18 +385,58 @@ async function loadAppSettings(){
       groqKey: null,
       imgbbKey: null,
       groqModel: $('as-groq-model').value.trim() || 'llama-3.1-8b-instant',
+      geminiModel: $('as-gemini-model')?.value.trim() || 'gemini-1.5-flash',
+      geminiVisionModel: $('as-gemini-vision-model')?.value.trim() || 'gemini-1.5-flash',
       tutorialVideoUrl: $('as-tutorial-url')?.value.trim() || '',
       sysNotes: $('as-sys-notes').value,
       sysChat: $('as-sys-chat').value,
+      // SEO
+      seoTitle: $('as-seo-title')?.value.trim() || '',
+      seoDescription: $('as-seo-desc')?.value.trim() || '',
+      seoOgImage: $('as-seo-og')?.value.trim() || '',
+      seoKeywords: $('as-seo-keywords')?.value.trim() || '',
+      // Cloudflare Turnstile (public key only here; secret is in private doc)
+      turnstileSiteKey: $('as-turnstile-site')?.value.trim() || '',
+      turnstileEnabled: ($('as-turnstile-enable')?.value || 'false') === 'true',
+      // Classes for registration dropdown
+      classLevels: ($('as-classes')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+      // Section 9 — referral-eligible package IDs (empty array = any package).
+      referralRewardPackages: collectReferralPackagePicks(),
       updatedAt: serverTimestamp(),
     }, { merge:true });
     await setDoc(privateRef, {
       groqKey: $('as-groq-key').value.trim(),
       imgbbKey: $('as-imgbb-key').value.trim(),
+      turnstileSecret: $('as-turnstile-secret')?.value.trim() || '',
       updatedAt: serverTimestamp(),
     }, { merge:true });
     toast('App settings saved');
   });
+}
+
+// Section 9 — paint a checkbox list of available packages so the admin
+// can decide which ones reward referrers on purchase.
+async function paintReferralPackagePicker(selected = []){
+  const root = $('as-referral-pkg-list');
+  if(!root) return;
+  let snap; try { snap = await getDocs(collection(db,'packages')); } catch(e){ snap = null; }
+  const pkgs = snap?.docs?.map(d => ({ id:d.id, ...d.data() })) || [];
+  if(!pkgs.length){
+    root.innerHTML = '<span style="color:var(--text2);font-size:.85rem">No packages defined — add packages first.</span>';
+    return;
+  }
+  const set = new Set(selected);
+  root.innerHTML = pkgs.map(p => `
+    <label style="display:flex;gap:6px;align-items:center;background:var(--surface2);padding:4px 8px;border-radius:8px;border:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" data-ref-pkg="${esc(p.id)}" ${set.has(p.id)?'checked':''}/>
+      ${esc(p.title || p.id)}
+      <small style="color:var(--text2)">৳${esc(p.price || '?')}</small>
+    </label>`).join('');
+}
+function collectReferralPackagePicks(){
+  const root = $('as-referral-pkg-list');
+  if(!root) return [];
+  return [...root.querySelectorAll('[data-ref-pkg]:checked')].map(el => el.dataset.refPkg);
 }
 
 // ============ BRANDING ============
@@ -501,6 +570,10 @@ function collectFields(root){
     const k = el.dataset.f;
     out[k] = (el.type === 'checkbox') ? el.checked : el.value;
   });
+  // Map the dual color picker (`color` + `color-text`) into a single field —
+  // keep whichever input was edited last, prefer the typed hex if it's set.
+  if(out['color-text']) out.color = out['color-text'];
+  delete out['color-text'];
   return out;
 }
 
@@ -550,7 +623,12 @@ async function loadPaymentMethods(){
           <div class="form-group"><label>Platform key</label><input data-f="id" value="${esc(m.id||'')}" placeholder="bkash"/></div>
           <div class="form-group"><label>Number / account</label><input data-f="number" value="${esc(m.number||'')}" placeholder="017XXXXXXXX"/></div>
           <div class="form-group"><label>Logo URL</label><input data-f="logoUrl" value="${esc(m.logoUrl||'')}" placeholder="https://..."/></div>
-          <div class="form-group"><label>Brand color</label><input data-f="color" value="${esc(m.color||'')}" placeholder="#e2136e"/></div>
+          <div class="form-group"><label>Brand color (matches user-panel checkout accent)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="color" data-f="color" value="${esc(m.color||'#3b82f6')}" style="width:48px;height:34px;padding:0;border-radius:6px"/>
+              <input type="text" data-f="color-text" value="${esc(m.color||'')}" placeholder="#e2136e" style="flex:1"/>
+            </div>
+          </div>
           <div class="form-group"><label>Payment link (optional)</label><input data-f="link" value="${esc(m.link||'')}"/></div>
           <div class="form-group" style="grid-column:span 2"><label>Instructions</label><input data-f="instructions" value="${esc(m.instructions||'')}" placeholder="Send money option ব্যবহার করুন"/></div>
         </div>
@@ -762,29 +840,38 @@ async function loadPaymentRequests(){
       // 2) Mark request approved.
       await updateDoc(doc(db,'payment_requests', reqId), { status:'approved', approvedAt: serverTimestamp() });
 
-      // 3) If this user was referred, credit referrer with 30 days reward
-      //    and bump the /referrals/{code}.used counter.
+      // 3) If this user was referred AND the purchased package is on the
+      //    admin-configured referral-eligible list (Section 9), credit the
+      //    referrer with 30 days reward and bump /referrals/{code}.used.
+      let referralCredited = false;
       if(p.referredBy){
         try {
-          const refUserDoc = await getDoc(doc(db,'users', p.referredBy));
-          if(refUserDoc.exists()){
-            const cur = refUserDoc.data();
-            const baseline = Math.max(now, cur.rewardEnd || 0, cur.trialEnd || 0);
-            await updateDoc(doc(db,'users', p.referredBy), {
-              rewardEnd: baseline + REWARD_MS,
-            });
-            // Bump referral code usage counter (best-effort).
-            if(cur.referralCode){
-              try {
-                const r = await getDoc(doc(db,'referrals', cur.referralCode));
-                const used = (r.exists() ? r.data().used : 0) + 1;
-                await setDoc(doc(db,'referrals', cur.referralCode), { used }, { merge:true });
-              } catch(e){}
+          const sysSnap = await getDoc(doc(db,'system','settings')).catch(()=>null);
+          const eligible = sysSnap?.data()?.referralRewardPackages;
+          // No explicit list → reward on every package (back-compat).
+          const ok = !Array.isArray(eligible) || !eligible.length
+            || (p.packageId && eligible.includes(p.packageId));
+          if(ok){
+            const refUserDoc = await getDoc(doc(db,'users', p.referredBy));
+            if(refUserDoc.exists()){
+              const cur = refUserDoc.data();
+              const baseline = Math.max(now, cur.rewardEnd || 0, cur.trialEnd || 0);
+              await updateDoc(doc(db,'users', p.referredBy), {
+                rewardEnd: baseline + REWARD_MS,
+              });
+              referralCredited = true;
+              if(cur.referralCode){
+                try {
+                  const r = await getDoc(doc(db,'referrals', cur.referralCode));
+                  const used = (r.exists() ? r.data().used : 0) + 1;
+                  await setDoc(doc(db,'referrals', cur.referralCode), { used }, { merge:true });
+                } catch(e){}
+              }
             }
           }
         } catch(e){ console.warn('referral credit failed', e); }
       }
-      toast('Approved → user upgraded' + (p.referredBy ? ' + referrer credited' : ''));
+      toast('Approved → user upgraded' + (referralCredited ? ' + referrer credited' : ''));
     }));
     tb.querySelectorAll('[data-pay-no]').forEach(b => b.addEventListener('click', async () => {
       await updateDoc(doc(db,'payment_requests', b.dataset.payNo), { status:'rejected' });
@@ -1150,11 +1237,18 @@ function bindSocialForms(){
     $('sc-name').value=''; $('sc-district').value=''; if($('sc-upazila')) $('sc-upazila').value='';
     toast('Added'); loadSchools();
   });
+  initQuizBuilder();
   $('qz-add-btn')?.addEventListener('click', async () => {
-    let questions;
-    try { questions = parseQuizInput($('qz-json').value || '[]'); }
-    catch(e){ toast('Invalid questions: ' + e.message, 'error'); return; }
-    if(!Array.isArray(questions)){ toast('Questions array দিন','error'); return; }
+    // Form-builder questions take priority. If empty, fall back to the
+    // advanced text/JSON textarea so existing workflows still work.
+    let questions = collectBuilderQuestions();
+    if(!questions.length){
+      try { questions = parseQuizInput($('qz-json').value || '[]'); }
+      catch(e){ toast('Invalid questions: ' + e.message, 'error'); return; }
+    }
+    if(!Array.isArray(questions) || !questions.length){
+      toast('At least 1 question দিন','error'); return;
+    }
     const startVal = $('qz-start').value;
     const endVal = $('qz-end').value;
     await addDoc(collection(db,'quiz_campaigns'), {
@@ -1168,8 +1262,65 @@ function bindSocialForms(){
       createdAt: serverTimestamp(),
     });
     $('qz-title').value=''; $('qz-category').value=''; $('qz-json').value='';
+    document.getElementById('qz-builder').innerHTML = '';
+    addBuilderQuestion();
     toast('Quiz created'); loadQuizCampaigns();
   });
+}
+
+// === Manual quiz builder (Section 8 — replace JSON-only workflow). ===
+function initQuizBuilder(){
+  const root = document.getElementById('qz-builder');
+  if(!root) return;
+  root.innerHTML = '';
+  addBuilderQuestion();
+  document.getElementById('qz-builder-add-btn')?.addEventListener('click', () => addBuilderQuestion());
+  document.getElementById('qz-toggle-json-btn')?.addEventListener('click', () => {
+    const g = document.getElementById('qz-json-group');
+    if(g) g.style.display = g.style.display === 'none' ? '' : 'none';
+  });
+}
+
+function addBuilderQuestion(prefill){
+  const root = document.getElementById('qz-builder');
+  if(!root) return;
+  const idx = root.children.length;
+  const card = document.createElement('div');
+  card.className = 'qz-q-card';
+  card.innerHTML = `
+    <div class="qz-q-head">
+      <strong>Q${idx+1}</strong>
+      <button type="button" class="btn btn-danger btn-sm" data-qz-remove>Remove</button>
+    </div>
+    <div class="form-group"><label>Question</label><input class="qz-q-text" placeholder="Question text" value="${prefill?.q ? prefill.q.replace(/"/g,'&quot;') : ''}"/></div>
+    <div class="qz-q-opts">
+      ${[0,1,2,3].map(i => `
+        <label class="qz-q-opt">
+          <input type="radio" name="qz-correct-${idx}-${Date.now()}" value="${i}" class="qz-q-correct" ${prefill?.correct===i?'checked':(!prefill && i===0?'checked':'')}/>
+          <input type="text" class="qz-q-opt-text" placeholder="Option ${String.fromCharCode(65+i)}" value="${prefill?.options?.[i] ? prefill.options[i].replace(/"/g,'&quot;') : ''}"/>
+        </label>
+      `).join('')}
+    </div>
+    <div class="form-group"><label>Explanation (shown after submit)</label><input class="qz-q-explain" placeholder="Why the correct answer is correct" value="${prefill?.explain ? prefill.explain.replace(/"/g,'&quot;') : ''}"/></div>
+  `;
+  card.querySelector('[data-qz-remove]')?.addEventListener('click', () => card.remove());
+  root.appendChild(card);
+}
+
+function collectBuilderQuestions(){
+  const root = document.getElementById('qz-builder');
+  if(!root) return [];
+  const out = [];
+  root.querySelectorAll('.qz-q-card').forEach(card => {
+    const q = card.querySelector('.qz-q-text')?.value.trim() || '';
+    const opts = Array.from(card.querySelectorAll('.qz-q-opt-text')).map(i => i.value.trim()).filter(Boolean);
+    const correct = parseInt(card.querySelector('.qz-q-correct:checked')?.value || '0', 10);
+    const explain = card.querySelector('.qz-q-explain')?.value.trim() || '';
+    if(q && opts.length >= 2){
+      out.push({ q, options: opts, correct: Math.min(correct, opts.length-1), explain });
+    }
+  });
+  return out;
 }
 
 function parseQuizInput(raw){

@@ -66,8 +66,12 @@ async function ensureMicPermission(){
 
 async function toggleListening(btn){
   if(listening) return stop();
-  // Find the target textarea relative to the button (siblings preferred).
-  targetEl = btn.closest('.form-group, .input-with-action, .voice-target, section, body')?.querySelector('textarea, input[type=text]')
+  // Find the target textarea relative to the button. Honour an explicit
+  // `data-mic-target` first (e.g. for a title-only mic button); otherwise
+  // pick the closest textarea / text input in the same form group.
+  const explicit = btn.dataset.micTarget && document.getElementById(btn.dataset.micTarget);
+  targetEl = explicit
+          || btn.closest('.form-group, .input-with-action, .voice-target, section, body')?.querySelector('textarea, input[type=text]')
           || document.getElementById('note-content')
           || document.activeElement;
   if(!targetEl){ toast('কোনো textarea active নেই', 'warn'); return; }
