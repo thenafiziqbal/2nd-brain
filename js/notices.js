@@ -119,6 +119,7 @@ function maybePushNotify(items){
 function nextScheduleEdge(items, now){
   const t = now.getTime();
   const candidates = [];
+  const map = readNotifiedMap();
   for(const n of items || []){
     if(n.startAt){ const v = new Date(n.startAt).getTime(); if(v > t) candidates.push(v); }
     if(n.endAt)  { const v = new Date(n.endAt).getTime();   if(v > t) candidates.push(v); }
@@ -132,6 +133,19 @@ function nextScheduleEdge(items, now){
       const d = new Date(now); d.setMinutes(0, 0, 0); d.setHours(n.dailyEndHour);
       if(d.getTime() <= t) d.setDate(d.getDate() + 1);
       candidates.push(d.getTime());
+    }
+    // Repeat-interval edge — schedule the next push for any notice that's
+    // already fired at least once but still has remaining repeats. Without
+    // this, a notice with only repeatLimit + intervalMinutes (and no other
+    // schedule fields) would never re-fire after the first push.
+    const seen = map[n.id];
+    if(seen && seen.count){
+      const limit = Math.max(1, n.repeatLimit || 1);
+      if(seen.count < limit && (n.intervalMinutes || 0) > 0){
+        const intervalMs = Math.max(60_000, n.intervalMinutes * 60_000);
+        const nextPush = (seen.lastAt || 0) + intervalMs;
+        if(nextPush > t) candidates.push(nextPush);
+      }
     }
   }
   if(!candidates.length) return null;
