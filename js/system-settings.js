@@ -3,27 +3,50 @@
 // connected user instantly.
 //
 // Watches:
-//   /system/settings        — appName, appTagline, feature flags, prompts, groqKey
+//   /system/settings        — appName, appTagline, feature flags, prompts (PUBLIC, no secrets)
+//   /system_client/keys     — imgbb + YouTube Data API key (signed-in users only)
 //   /system/free_tier       — features+limits when no plan/trial
 //   /system/trial_package   — trial duration + features
 //   /system/payment_methods — { items: [{id,name,number,link,instructions,enabled}] }
 //   /system/community       — { items: [{name,url,platform}] }
 //   /system/social          — { items: [{platform,url}] }
 import { db, doc, onSnapshot } from './firebase-init.js';
-import { state, emit } from './store.js';
+import { state, emit, on } from './store.js';
 import { paintCommunity, paintFooter } from './community.js';
+
+let publicSettings = {};
+let clientKeys = {};
+let unsubClientKeys = null;
+
+function mergeAndEmit(){
+  const merged = { ...publicSettings, ...clientKeys };
+  state.appSettings = merged;
+  state.features = merged.features || {};
+  applyFeatureFlags();
+  applySeoMeta(merged);
+  emit('system-settings', merged);
+}
 
 export function watchSystemSettings(){
   const unsubs = [];
 
   unsubs.push(onSnapshot(doc(db,'system','settings'), snap => {
-    const d = snap.exists() ? snap.data() : {};
-    state.appSettings = d;
-    state.features = d.features || {};
-    applyFeatureFlags();
-    applySeoMeta(d);
-    emit('system-settings', d);
+    publicSettings = snap.exists() ? snap.data() : {};
+    mergeAndEmit();
   }, err => console.warn('system settings watch failed', err)));
+
+  // Once a user is authenticated, subscribe to /system_client/keys to pick up
+  // imgbbKey + youtubeApiKey that admins now store outside the public doc.
+  on('auth-ready', () => {
+    if(!state.user) return;
+    if(unsubClientKeys) return;
+    try {
+      unsubClientKeys = onSnapshot(doc(db,'system_client','keys'), snap => {
+        clientKeys = snap.exists() ? snap.data() : {};
+        mergeAndEmit();
+      }, err => { /* signed-out users can't read this — ignore */ });
+    } catch(e){ /* ignore */ }
+  });
 
   unsubs.push(onSnapshot(doc(db,'system','free_tier'), snap => {
     state.freeTier = snap.exists() ? snap.data() : null;
@@ -53,7 +76,10 @@ export function watchSystemSettings(){
     emit('social', state.social);
   }));
 
-  return () => unsubs.forEach(u => u && u());
+  return () => {
+    unsubs.forEach(u => u && u());
+    if(unsubClientKeys){ unsubClientKeys(); unsubClientKeys = null; }
+  };
 }
 
 function applyFeatureFlags(){

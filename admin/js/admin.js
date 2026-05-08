@@ -386,11 +386,12 @@ async function loadAppSettings(){
       revisionDelay: parseInt($('as-rev').value) || 24,
       revisionDuration: parseInt($('as-rev-duration')?.value) || 60,
       revisionNotifRequireRequest: $('as-rev-notif-require-req')?.value === 'true',
-      // Keys are also written to /system_private/settings; we keep them in
-      // the public doc too so the existing user-side fetch path still works.
-      groqKey: $('as-groq-key')?.value.trim() || '',
-      imgbbKey: $('as-imgbb-key')?.value.trim() || '',
-      youtubeApiKey: $('as-youtube-key')?.value.trim() || '',
+      // Sensitive keys go to /system_private (admin only) and to
+      // /system_client (signed-in only). They MUST NOT be in /system because
+      // that doc is publicly readable by Firestore rules.
+      groqKey: null,
+      imgbbKey: null,
+      youtubeApiKey: null,
       groqModel: $('as-groq-model').value.trim() || 'llama-3.1-8b-instant',
       geminiModel: $('as-gemini-model')?.value.trim() || 'gemini-2.5-flash',
       geminiVisionModel: $('as-gemini-vision-model')?.value.trim() || 'gemini-2.5-flash',
@@ -416,6 +417,14 @@ async function loadAppSettings(){
       groqKey: $('as-groq-key').value.trim(),
       imgbbKey: $('as-imgbb-key').value.trim(),
       turnstileSecret: $('as-turnstile-secret')?.value.trim() || '',
+      youtubeApiKey: $('as-youtube-key')?.value.trim() || '',
+      updatedAt: serverTimestamp(),
+    }, { merge:true });
+    // Section 4 / 15 — keys the signed-in user app needs (imgbb upload,
+    // YouTube Data API). Stored in /system_client/keys which is signed-in
+    // readable but NOT public.
+    await setDoc(doc(db,'system_client','keys'), {
+      imgbbKey: $('as-imgbb-key').value.trim(),
       youtubeApiKey: $('as-youtube-key')?.value.trim() || '',
       updatedAt: serverTimestamp(),
     }, { merge:true });

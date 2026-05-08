@@ -77,6 +77,15 @@ service cloud.firestore {
     match /system_private/{doc} {
       allow read, write: if isAdmin();
     }
+
+    // Section 4 / Section 15 — keys that the user-side app legitimately needs
+    // (imgbb image-host key, YouTube Data API key). Readable by any signed-in
+    // user but NOT publicly, so unauthenticated visitors can't scrape them.
+    // groqKey / turnstileSecret stay in /system_private/{doc}.
+    match /system_client/{doc} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
     match /packages/{pkg} {
       allow read: if true;
       allow write: if isAdmin();
