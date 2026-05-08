@@ -97,7 +97,14 @@ function initNav(){
   });
 }
 
+// Guard against duplicate boots — onAuthStateChanged can fire multiple times
+// (token refresh, multi-tab login). Several load*() functions add click
+// listeners to Save buttons that would otherwise stack and cause one click
+// to write to Firestore N times.
+let _booted = false;
 async function bootDashboard(){
+  if(_booted) return;
+  _booted = true;
   initNav();
   await Promise.allSettled([
     loadKPIs(), loadUsers(), loadFeatures(), loadAppSettings(),
