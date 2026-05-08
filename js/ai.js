@@ -8,6 +8,8 @@ const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GEMINI_URL = (model, key) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+const GEMINI_DEFAULT_VISION_MODEL = 'gemini-2.5-flash';
 
 export function getActiveKey(){
   if(state.apiKeys?.gemini) return { provider:'gemini', key: state.apiKeys.gemini };
@@ -50,7 +52,7 @@ async function chatGroq(key, messages, { model, max_tokens=700, temperature=0.7 
 }
 
 async function chatGemini(key, messages, { model, max_tokens=700, temperature=0.7 } = {}){
-  const useModel = model || state.appSettings?.geminiModel || 'gemini-1.5-flash';
+  const useModel = model || state.appSettings?.geminiModel || GEMINI_DEFAULT_MODEL;
   const contents = messages.filter(m => m.role !== 'system').map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }]
@@ -75,7 +77,7 @@ async function chatGemini(key, messages, { model, max_tokens=700, temperature=0.
 // image (without the data:URL prefix), the MIME type, and a prompt.
 export async function geminiVision({ base64, mime, prompt }){
   if(!state.apiKeys?.gemini) throw new Error('Gemini API key দরকার — Settings এ paste করুন');
-  const model = state.appSettings?.geminiVisionModel || state.appSettings?.geminiModel || 'gemini-1.5-flash';
+  const model = state.appSettings?.geminiVisionModel || state.appSettings?.geminiModel || GEMINI_DEFAULT_VISION_MODEL;
   const body = {
     contents: [{
       role: 'user',

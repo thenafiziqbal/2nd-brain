@@ -254,9 +254,12 @@ async function loadKPIs(){
     const now = Date.now();
     usersSnap.docs.forEach(d => {
       const x = d.data();
-      if(x.plan === 'pro' || x.plan === 'paid') pro++;
-      if(x.trialEnd && x.trialEnd > now) trial++;
-      active++;
+      const isPro = x.plan === 'pro' || x.plan === 'paid';
+      const inTrial = x.trialEnd && x.trialEnd > now;
+      if(isPro) pro++;
+      if(inTrial) trial++;
+      // "Active" = currently entitled (paid plan or trial still valid).
+      if(isPro || inTrial) active++;
     });
     $('kpi-active').textContent = active;
     $('kpi-trial').textContent = trial;
@@ -358,8 +361,9 @@ async function loadAppSettings(){
   $('as-groq-key').value = privateSettings.groqKey || '';
   $('as-imgbb-key').value = privateSettings.imgbbKey || '';
   $('as-groq-model').value = d.groqModel || 'llama-3.1-8b-instant';
-  if($('as-gemini-model')) $('as-gemini-model').value = d.geminiModel || 'gemini-1.5-flash';
-  if($('as-gemini-vision-model')) $('as-gemini-vision-model').value = d.geminiVisionModel || 'gemini-1.5-flash';
+  if($('as-gemini-model')) $('as-gemini-model').value = d.geminiModel || 'gemini-2.5-flash';
+  if($('as-gemini-vision-model')) $('as-gemini-vision-model').value = d.geminiVisionModel || 'gemini-2.5-flash';
+  if($('as-youtube-key')) $('as-youtube-key').value = privateSettings.youtubeApiKey || '';
   if($('as-tutorial-url')) $('as-tutorial-url').value = d.tutorialVideoUrl || '';
   $('as-sys-notes').value = d.sysNotes || '';
   $('as-sys-chat').value = d.sysChat || '';
@@ -382,11 +386,15 @@ async function loadAppSettings(){
       revisionDelay: parseInt($('as-rev').value) || 24,
       revisionDuration: parseInt($('as-rev-duration')?.value) || 60,
       revisionNotifRequireRequest: $('as-rev-notif-require-req')?.value === 'true',
-      groqKey: null,
-      imgbbKey: null,
+      // Keys are also written to /system_private/settings; we keep them in
+      // the public doc too so the existing user-side fetch path still works.
+      groqKey: $('as-groq-key')?.value.trim() || '',
+      imgbbKey: $('as-imgbb-key')?.value.trim() || '',
+      youtubeApiKey: $('as-youtube-key')?.value.trim() || '',
       groqModel: $('as-groq-model').value.trim() || 'llama-3.1-8b-instant',
-      geminiModel: $('as-gemini-model')?.value.trim() || 'gemini-1.5-flash',
-      geminiVisionModel: $('as-gemini-vision-model')?.value.trim() || 'gemini-1.5-flash',
+      geminiModel: $('as-gemini-model')?.value.trim() || 'gemini-2.5-flash',
+      geminiVisionModel: $('as-gemini-vision-model')?.value.trim() || 'gemini-2.5-flash',
+      youtubeApiKeyAvailable: !!($('as-youtube-key')?.value.trim()),
       tutorialVideoUrl: $('as-tutorial-url')?.value.trim() || '',
       sysNotes: $('as-sys-notes').value,
       sysChat: $('as-sys-chat').value,
@@ -408,6 +416,7 @@ async function loadAppSettings(){
       groqKey: $('as-groq-key').value.trim(),
       imgbbKey: $('as-imgbb-key').value.trim(),
       turnstileSecret: $('as-turnstile-secret')?.value.trim() || '',
+      youtubeApiKey: $('as-youtube-key')?.value.trim() || '',
       updatedAt: serverTimestamp(),
     }, { merge:true });
     toast('App settings saved');
@@ -716,12 +725,68 @@ async function loadNotices(){
         <input data-f="linkLabel" value="${esc(m.linkLabel||'')}" placeholder="Link button label"/>
         <button class="btn btn-danger btn-sm" data-li-del="${i}">Delete</button>
       </div>
+      <fieldset style="border:1px dashed var(--border);padding:8px 10px;border-radius:8px">
+        <legend style="font-size:.78rem;color:var(--text2);padding:0 6px">Scheduling (push notification)</legend>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="font-size:.78rem">Start at (date+time)
+            <input type="datetime-local" data-f="startAt" value="${esc(toDateTimeLocal(m.startAt))}"/>
+          </label>
+          <label style="font-size:.78rem">End at (date+time)
+            <input type="datetime-local" data-f="endAt" value="${esc(toDateTimeLocal(m.endAt))}"/>
+          </label>
+          <label style="font-size:.78rem">Daily window — start hour (0-23)
+            <input type="number" min="0" max="23" data-f="dailyStartHour" value="${m.dailyStartHour ?? ''}" placeholder="e.g. 10"/>
+          </label>
+          <label style="font-size:.78rem">Daily window — end hour (0-23)
+            <input type="number" min="0" max="23" data-f="dailyEndHour" value="${m.dailyEndHour ?? ''}" placeholder="e.g. 20"/>
+          </label>
+          <label style="font-size:.78rem">Repeat limit (per device)
+            <input type="number" min="1" max="50" data-f="repeatLimit" value="${m.repeatLimit ?? 1}"/>
+          </label>
+          <label style="font-size:.78rem">Repeat interval (minutes)
+            <input type="number" min="0" data-f="intervalMinutes" value="${m.intervalMinutes ?? 0}" placeholder="0 = one-shot"/>
+          </label>
+          <label style="font-size:.78rem;grid-column:1/-1">Auto-delete at (date+time — banner removed locally after this)
+            <input type="datetime-local" data-f="autoDeleteAt" value="${esc(toDateTimeLocal(m.autoDeleteAt))}"/>
+          </label>
+        </div>
+      </fieldset>
     </div>`,
-    () => ({ id: 'n-' + Date.now().toString(36), title:'New notice', body:'', tone:'info', type:'banner', active:true, link:'', linkLabel:'' })
+    () => ({
+      id: 'n-' + Date.now().toString(36),
+      title:'New notice', body:'', tone:'info', type:'banner', active:true, link:'', linkLabel:'',
+      startAt:'', endAt:'', dailyStartHour:'', dailyEndHour:'', repeatLimit:1, intervalMinutes:0, autoDeleteAt:'',
+    }),
+    normalizeNotice
   );
 }
 
-async function loadList(prefix, docName, rowFn, freshFn){
+function toDateTimeLocal(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  // YYYY-MM-DDTHH:MM
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function normalizeNotice(m){
+  // Convert datetime-local strings to ISO; coerce numeric fields.
+  const out = { ...m };
+  ['startAt','endAt','autoDeleteAt'].forEach(k => {
+    if(out[k]){ const d = new Date(out[k]); out[k] = isNaN(d.getTime()) ? '' : d.toISOString(); }
+    else out[k] = '';
+  });
+  ['dailyStartHour','dailyEndHour'].forEach(k => {
+    if(out[k] === '' || out[k] === null || out[k] === undefined) out[k] = null;
+    else out[k] = Math.max(0, Math.min(23, parseInt(out[k], 10) || 0));
+  });
+  out.repeatLimit = Math.max(1, parseInt(out.repeatLimit, 10) || 1);
+  out.intervalMinutes = Math.max(0, parseInt(out.intervalMinutes, 10) || 0);
+  return out;
+}
+
+async function loadList(prefix, docName, rowFn, freshFn, normalizeFn){
   const root = $(prefix + '-list');
   const ref = doc(db,'system', docName);
   let items = [];
@@ -731,7 +796,9 @@ async function loadList(prefix, docName, rowFn, freshFn){
     root.querySelectorAll('.li-row').forEach((row,i) => {
       row.querySelectorAll('[data-f]').forEach(el => {
         el.addEventListener('change', () => {
-          items[i] = { ...items[i], ...collectFields(row) };
+          let next = { ...items[i], ...collectFields(row) };
+          if(typeof normalizeFn === 'function') next = normalizeFn(next);
+          items[i] = next;
           save();
         });
       });

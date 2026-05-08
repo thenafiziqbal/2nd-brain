@@ -58,6 +58,33 @@ export function deleteSyllabusTopic(id){
   renderSyllabus();
 }
 
+// Returns the notes that are linked to a given syllabus chapter.
+// Notes link via `note.syllabusId` (set when the user picks a chapter
+// from the Add Note form).
+export function notesForChapter(chapterId){
+  const all = state.notes || [];
+  return all.filter(n => n.syllabusTopicId === chapterId || n.syllabusId === chapterId);
+}
+
+// Used by the "Add Note for this chapter" shortcut: switches to the Add
+// section, prefills the chapter picker + subject, and focuses the title.
+export function startNoteForChapter(chapterId){
+  const item = state.syllabus.find(x => x.id === chapterId);
+  if(!item) return;
+  // Switch section.
+  import('./ui.js').then(m => m.showSection('add'));
+  setTimeout(() => {
+    const sub = document.getElementById('note-subject'); if(sub) sub.value = item.subject || '';
+    const pick = document.getElementById('note-syllabus-pick');
+    if(pick){
+      pick.value = chapterId;
+      pick.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const title = document.getElementById('note-title');
+    if(title){ title.focus(); title.placeholder = `Note for: ${item.chapter || item.topic}`; }
+  }, 60);
+}
+
 export function renderSyllabus(){
   const root = document.getElementById('syllabus-list');
   if(!root) return;
@@ -72,16 +99,40 @@ export function renderSyllabus(){
         <div class="list-title">Progress: ${done}/${total}</div>
         <div class="progress-bar"><span style="width:${Math.round(done/total*100)}%"></span></div>
       </div>
-    </div>` + state.syllabus.map(x => `
+    </div>` + state.syllabus.map(x => {
+      const linked = notesForChapter(x.id);
+      const drawer = `<div class="chapter-notes-drawer">
+        <h4>${icon('notes','sm')} Notes (${linked.length})</h4>
+        ${linked.length
+          ? `<ul>${linked.slice(0, 6).map(n => `
+              <li>
+                <a href="#" data-open-note="${esc(n.id)}" style="text-decoration:none;color:inherit;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.title || '(no title)')}</a>
+                <span style="font-size:.7rem;color:var(--text2);flex-shrink:0">${n.revised ? '✓' : ''}</span>
+              </li>`).join('')}</ul>`
+          : `<div class="empty">এই chapter এ কোনো note নেই</div>`
+        }
+        <button data-add-note-for-chapter="${esc(x.id)}">${icon('add','sm')} Add note for this chapter</button>
+      </div>`;
+      return `
     <div class="list-item ${x.done?'done':''}">
       <div class="list-main">
         <div class="list-title">${icon(x.done?'check':'add','sm')} ${esc(x.topic)}</div>
         <div class="list-meta">${esc(x.subject)} • ${fmtDateTime(x.createdAt)}</div>
         ${x.note ? `<div class="topic-note">${esc(x.note)}</div>` : ''}
+        ${drawer}
       </div>
       <div class="list-actions">
         <button class="btn btn-success btn-sm" data-toggle-topic="${x.id}">${x.done?'Undo':'Tick'}</button>
         <button class="btn btn-danger btn-sm" data-delete-topic="${x.id}">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
+  // Wire add-note-for-chapter buttons (delegated bind).
+  root.querySelectorAll('[data-add-note-for-chapter]').forEach(b => {
+    b.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      startNoteForChapter(b.dataset.addNoteForChapter);
+    });
+  });
 }

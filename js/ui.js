@@ -8,7 +8,7 @@ import { setActiveChapter } from './ai-questions.js';
 import { aiChat } from './ai.js';
 import { syncSettingsForm } from './settings.js';
 import { toast } from './toast.js';
-import { speak, stop as ttsStop, ttsSupported } from './tts.js';
+import { speak, stop as ttsStop, ttsSupported, ttsEnabled, setTtsEnabled, isSpeaking } from './tts.js';
 import { paintNoteImagesInDetail } from './note-images.js';
 
 export function initUI(){
@@ -189,12 +189,13 @@ function listenToCurrentNote(){
   const id = state.currentNoteId;
   const note = state.notes.find(n => n.id === id);
   if(!note) return;
-  // If we're already speaking, stop instead.
-  // (Web Speech API doesn't expose a clean isSpeaking; use our flag.)
   const btn = document.getElementById('detail-tts-btn');
-  if(btn?.classList.contains('btn-loading')){
-    ttsStop(); btn.classList.remove('btn-loading'); return;
+  // Toggle behaviour — if already speaking, stop. Otherwise force-enable
+  // TTS for the user (they explicitly clicked "Listen") and play.
+  if(isSpeaking()){
+    ttsStop(); btn?.classList.remove('btn-loading'); return;
   }
+  if(!ttsEnabled()) setTtsEnabled(true);
   const ai = note.aiExplanation ? '\n\n' + note.aiExplanation : '';
   speak(`${note.title}.\n${note.content}${ai}`);
   btn?.classList.add('btn-loading');

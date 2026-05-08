@@ -4,7 +4,7 @@
  *   - Firestore traffic — never intercepted; the SDK handles its own offline cache.
  *   - Other GET requests — network-first with 2s fallback to cache.
  */
-const CACHE = 'sb-shell-v5';
+const CACHE = 'sb-shell-v6';
 const SHELL = [
   './',
   './index.html',

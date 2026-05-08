@@ -509,17 +509,17 @@
         </div>
         <div class="card" style="max-width:780px">
           <p class="mini-note" style="font-size:.82rem;color:var(--text2);margin-bottom:8px">
-            Paste a YouTube playlist link — we'll turn it into a course. Saved on this device only (browser localStorage).
+            Paste one or more YouTube playlist or video links (one per line). প্রতিটি video / playlist একটি আলাদা shortcut হিসেবে যোগ হবে। Saved on this device only.
           </p>
           <div class="form-row">
-            <div class="form-group" style="flex:2">
+            <div class="form-group" style="flex:1">
               <label>Course Title</label>
-              <input id="yt-course-title" placeholder="HSC Physics — full playlist"/>
+              <input id="yt-course-title" placeholder="HSC Physics — full course"/>
             </div>
-            <div class="form-group" style="flex:3">
-              <label>Playlist URL or playlist ID</label>
-              <input id="yt-course-url" placeholder="https://www.youtube.com/playlist?list=PL..."/>
-            </div>
+          </div>
+          <div class="form-group">
+            <label>YouTube link(s) — one per line (playlist or single video)</label>
+            <textarea id="yt-course-url" rows="4" placeholder="https://www.youtube.com/playlist?list=PL...&#10;https://youtu.be/dQw4w9WgXcQ&#10;https://www.youtube.com/watch?v=..."></textarea>
           </div>
           <button class="btn btn-primary btn-sm" id="yt-course-add-btn"><svg class="ico sm"><use href="assets/icons.svg#i-add"/></svg> Add course</button>
         </div>

@@ -42,6 +42,7 @@ import { initSyllabusOcr } from './syllabus-ocr.js';
 import { initYoutubeCourses } from './youtube-courses.js';
 import { initPushNotifications } from './push-notifications.js';
 import { initOnboardingTour } from './onboarding-tour.js';
+import { initTtsToggle } from './tts.js';
 import { toast } from './toast.js';
 
 // Boot.
@@ -77,6 +78,7 @@ initSyllabusOcr();
 initYoutubeCourses();
 initPushNotifications();
 initOnboardingTour();
+initTtsToggle();
 
 // Quick task shortcut on dashboard
 document.getElementById('quick-task-btn')?.addEventListener('click', quickAddTask);

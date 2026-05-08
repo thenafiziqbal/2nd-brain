@@ -27,6 +27,8 @@ export function renderAll(){
   renderNotesGrid();
   renderRevisionFull();
   updateSidebarSubjects();
+  // Re-paint syllabus list so chapter-linked note counts stay fresh.
+  import('./syllabus.js').then(m => m.renderSyllabus()).catch(()=>{});
 }
 
 export function renderDashboard(){
