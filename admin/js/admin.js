@@ -1528,9 +1528,10 @@ initAuthUI();
     } catch(e){}
   }
 
-  // Load on section switch
+  // Load on section switch — use closest() so clicks on the icon/<use> child
+  // inside the nav button still resolve to the [data-sec] container.
   document.addEventListener('click', e => {
-    if(e.target.dataset.sec === 'custom-notif'){
+    if(e.target.closest('[data-sec]')?.dataset.sec === 'custom-notif'){
       loadCNHistory();
       loadRevNotifRequests();
     }
