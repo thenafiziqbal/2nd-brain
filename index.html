@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="bn" data-theme="light">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#3b82f6"/>
+<title>Second Brain</title>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" href="assets/logo.svg"/>
+<link rel="apple-touch-icon" href="assets/icon-192.png.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"/>
+<link rel="stylesheet" href="css/base.css"/>
+<link rel="stylesheet" href="css/components.css"/>
+<link rel="stylesheet" href="css/auth.css"/>
+<link rel="stylesheet" href="css/dashboard.css"/>
+<link rel="stylesheet" href="css/notes.css"/>
+<link rel="stylesheet" href="css/prayer.css"/>
+<link rel="stylesheet" href="css/focus.css"/>
+<link rel="stylesheet" href="css/syllabus.css"/>
+<link rel="stylesheet" href="css/chat.css"/>
+<link rel="stylesheet" href="css/saas.css"/>
+<link rel="stylesheet" href="css/social.css"/>
+<link rel="stylesheet" href="css/mobile-ui.css"/>
+<link rel="stylesheet" href="css/responsive.css"/>
+</head>
+<body>
+
+<!-- Inline icon sprite — fetched once, cached forever -->
+<div id="svg-host" hidden></div>
+<script>
+  // Inject the icon sprite into the DOM so <use href="assets/icons.svg#…"> works
+  // without an extra HTTP round-trip per icon. The file is cached by the SW.
+  fetch('assets/icons.svg').then(r => r.text()).then(t => {
+    const host = document.getElementById('svg-host');
+    if(host) host.innerHTML = t;
+  }).catch(()=>{});
+</script>
+
+<!-- Offline badge (hidden by default) -->
+<div id="offline-badge" class="offline-badge"></div>
+
+<!-- Toasts -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ============== AUTH GATE ============== -->
+<div id="auth-gate" class="auth-gate show">
+  <div class="auth-card">
+    <aside class="auth-brand">
+      <div class="auth-brand-icon"><svg class="ico xl"><use href="assets/icons.svg#i-brain"/></svg></div>
+      <h1 id="brand-app-name">Second Brain</h1>
+      <p id="brand-tagline">প্রতিটি student-এর জন্য আলাদা notes, focus, syllabus, tasks ও AI key। একবার register, এরপর শুধু login।</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        <span class="badge"><svg class="ico sm"><use href="assets/icons.svg#i-shield"/></svg> Per-user privacy</span>
+        <span class="badge"><svg class="ico sm"><use href="assets/icons.svg#i-wifi-off"/></svg> Offline-first</span>
+        <span class="badge"><svg class="ico sm"><use href="assets/icons.svg#i-sparkles"/></svg> AI Questions</span>
+      </div>
+    </aside>
+    <div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="login-tab">Login</button>
+        <button class="auth-tab" id="register-tab">Register</button>
+      </div>
+
+      <!-- Login -->
+      <form id="login-form" class="auth-form active" autocomplete="on">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email"/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-with-action">
+            <input type="password" id="login-password" required minlength="6" autocomplete="current-password"/>
+            <button type="button" class="input-action" data-toggle-pw="login-password"><svg class="ico"><use href="assets/icons.svg#i-eye"/></svg></button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">
+          <svg class="ico"><use href="assets/icons.svg#i-logout" style="transform:scaleX(-1)"/></svg> Login
+        </button>
+        <button type="button" id="forgot-password-btn" class="btn btn-link btn-sm" style="display:block;margin:6px auto 0;background:none;color:var(--accent2);border:0;cursor:pointer;font-size:.82rem">Forgot password?</button>
+        <p class="auth-help">প্রথমবার? উপরে "Register" tab-এ যান। একবার register করার পর শুধু login করলেই হবে।</p>
+      </form>
+
+      <!-- Register -->
+      <form id="register-form" class="auth-form" autocomplete="on">
+        <div id="refer-hint" class="refer-hint" style="display:none"></div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="reg-name" required placeholder="Your name"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Institution Name</label>
+            <select id="reg-institution-select" data-school-select required></select>
+          <input type="text" id="reg-institution" hidden/>
+          <div class="form-row">
+            <div class="form-group"><label>District</label><input id="reg-district" placeholder="Dhaka"/></div>
+            <div class="form-group"><label>Upazila / City</label><input id="reg-upazila" placeholder="Dhanmondi"/></div>
+          </div>
+          </div>
+          <div class="form-group">
+            <label>Class / Level</label>
+            <select id="reg-class" required></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" required placeholder="you@example.com" autocomplete="email"/>
+        </div>
+        <div class="form-group">
+          <label>Referral code (optional)</label>
+          <input type="text" id="reg-referral" placeholder="ABCD1234" style="text-transform:uppercase"/>
+          <p class="mini-note">কোনো বন্ধুর referral code থাকলে এখানে দিন — দু'জনই reward পাবেন।</p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Password</label>
+            <div class="input-with-action">
+              <input type="password" id="reg-password" required minlength="6" autocomplete="new-password"/>
+              <button type="button" class="input-action" data-toggle-pw="reg-password"><svg class="ico"><use href="assets/icons.svg#i-eye"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Religion</label>
+            <select id="reg-religion">
+              <option value="islam">Islam</option>
+              <option value="hindu">Hindu</option>
+              <option value="christian">Christian</option>
+              <option value="buddhist">Buddhist</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div id="reg-school-request-block" class="school-request-block" style="display:none">
+          <div class="mini-note" style="margin-bottom:8px">আপনার institution list এ নেই? নিচে দিয়ে request submit করুন — approve হলে list এ যুক্ত হবে।</div>
+          <div class="form-row">
+            <div class="form-group"><label>Institution name</label><input id="reg-school-request-name" placeholder="School / College / University"/></div>
+            <div class="form-group"><label>District (optional)</label><input id="reg-school-request-district" placeholder="Rajshahi"/></div>
+            <div class="form-group"><label>Upazila / City (optional)</label><input id="reg-school-request-upazila" placeholder="Charghat"/></div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="reg-school-request-submit"><svg class="ico sm"><use href="assets/icons.svg#i-send"/></svg> Submit institution request</button>
+          <p id="reg-school-request-status" class="mini-note" style="display:none;color:var(--accent3);margin-top:6px"></p>
+        </div>
+        <div id="turnstile-mount" class="turnstile-mount" style="margin:8px 0"></div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">
+          <svg class="ico"><use href="assets/icons.svg#i-add"/></svg> Create my account
+        </button>
+        <p class="auth-help">শুধু একবার register করতে হবে। পরের বার থেকে app খোলামাত্র auto login হবে।</p>
+      </form>
+      <div id="auth-error" class="auth-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== APP ============== -->
+<div class="app-container">
+  <header>
+    <button class="btn-icon menu-toggle" id="menu-toggle-btn" title="Menu" aria-label="Open menu"><svg class="ico"><use href="assets/icons.svg#i-tasks"/></svg></button>
+    <a href="#" class="logo"><span class="logo-img" data-brand-logo><svg class="ico"><use href="assets/icons.svg#i-brain"/></svg></span><span id="app-name-header">Second Brain</span></a>
+
+    <div class="header-center">
+      <div class="search-bar" style="width:min(420px,100%)">
+        <svg class="ico"><use href="assets/icons.svg#i-search"/></svg>
+        <input class="search-input" id="search-input" placeholder="Search notes, topics..."/>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="focus-header-widget" class="focus-timer-header">
+        <svg class="ico sm"><use href="assets/icons.svg#i-clock"/></svg>
+        <span class="focus-time-display" id="focus-header-time">00:00:00</span>
+        <button class="focus-toggle" id="focus-toggle-btn"><svg class="ico"><use href="assets/icons.svg#i-play"/></svg></button>
+      </div>
+      <button class="btn-icon" id="theme-toggle-btn" title="Theme"><svg class="ico"><use href="assets/icons.svg#i-moon"/></svg></button>
+      <button class="btn-icon" id="logout-btn" title="Logout"><svg class="ico"><use href="assets/icons.svg#i-logout"/></svg></button>
+      <div class="user-avatar" id="user-avatar" data-user-avatar>S</div>
+      <!-- Management panel button removed from User Panel. -->
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- ===== Sidebar ===== -->
+    <nav class="sidebar">
+      <div class="sidebar-section-label">Workspace</div>
+      <div class="nav-item active" data-section="dashboard"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-dashboard"/></svg></span>Dashboard</div>
+      <div class="nav-item" data-section="notes" data-feature="notes"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-notes"/></svg></span>All Notes<span class="nav-badge" id="sidebar-notes-count">0</span></div>
+      <div class="nav-item" data-section="revision" data-feature="revision"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-revision"/></svg></span>Revision<span class="nav-badge warn" id="sidebar-revision-count">0</span></div>
+      <div class="nav-item" data-section="add" data-feature="addNote"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-add"/></svg></span>Add Note</div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Productivity</div>
+      <div class="nav-item" data-section="prayer" data-feature="prayer"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-prayer"/></svg></span>Prayer Times</div>
+      <div class="nav-item" data-section="focus" data-feature="focus"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-focus"/></svg></span>Focus Timer</div>
+      <div class="nav-item" data-section="syllabus" data-feature="syllabus"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-syllabus"/></svg></span>Syllabus + AI</div>
+      <div class="nav-item" data-section="tasks" data-feature="tasks"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-tasks"/></svg></span>Tasks</div>
+      <div class="nav-item" data-section="courses" data-feature="courses"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-play"/></svg></span>YouTube Courses</div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Subjects</div>
+      <div id="sidebar-subjects">
+        <div class="subject-tag active" data-filter-all="1">
+          <div class="tag-dot" style="background:var(--text2)"></div>All Subjects<span class="tag-count" id="count-all">0</span>
+        </div>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Social</div>
+      <div class="nav-item" data-section="leaderboard"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-flame"/></svg></span>Leaderboard</div>
+      <div class="nav-item" data-section="class-chat"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-megaphone"/></svg></span>Class Community</div>
+      <div class="nav-item" data-section="friends"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-users"/></svg></span>Friends</div>
+      <div class="nav-item" data-section="dm"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg></span>Messages</div>
+      <div class="nav-item" data-section="quiz"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg></span>Quizzes</div>
+      <div class="nav-item" data-section="shared-notes"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-share"/></svg></span>Shared Notes</div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Account</div>
+      <div class="nav-item" data-section="refer"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-gift"/></svg></span>Refer & Earn</div>
+      <div class="nav-item" data-section="community"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-users"/></svg></span>Community</div>
+      <div class="nav-item" data-section="payment"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg></span>Subscribe</div>
+      <div class="nav-item" id="open-settings-btn" data-section="settings"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-settings"/></svg></span>Settings</div>
+      <div class="nav-item" data-section="help"><span class="nav-icon"><svg class="ico"><use href="assets/icons.svg#i-help"/></svg></span>Help & Support</div>
+    </nav>
+
+    <main class="content">
+      <div id="trial-banner" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:.86rem;margin-bottom:12px"></div>
+      <div id="notice-stack" class="notice-stack"></div>
+
+      <!-- ===== DASHBOARD ===== -->
+      <section id="view-dashboard" class="section-view active">
+        <div class="brain-hero">
+          <div class="brain-hero-orb"><svg class="ico"><use href="assets/icons.svg#i-brain"/></svg></div>
+          <div class="brain-info">
+            <div class="brain-greeting">Welcome back, <span id="brain-greet-name">Student</span>!</div>
+            <p class="brain-subtitle">Your second brain is awake. Take notes, schedule revisions, and let AI explain whatever feels hard.</p>
+            <div class="brain-stats-row">
+              <div class="brain-stat"><svg class="ico sm"><use href="assets/icons.svg#i-notes"/></svg> <strong id="brain-total">0</strong> notes</div>
+              <div class="brain-stat"><svg class="ico sm"><use href="assets/icons.svg#i-revision"/></svg> <strong id="brain-due">0</strong> due now</div>
+              <div class="brain-stat"><svg class="ico sm"><use href="assets/icons.svg#i-flame"/></svg> AI: <strong id="brain-ai-count">0</strong></div>
+            </div>
+          </div>
+          <div class="brain-time-label" id="brain-time-label">⏱ 00:00:00</div>
+        </div>
+
+        <div class="section-header" style="margin-top:18px"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-dashboard"/></svg> Stats</div></div>
+        <div class="stats-grid">
+          <div class="stat-card blue"><div class="stat-icon"><svg class="ico"><use href="assets/icons.svg#i-notes"/></svg></div><div class="stat-label">Total Notes</div><div class="stat-value blue" id="stat-total">0</div></div>
+          <div class="stat-card warn"><div class="stat-icon"><svg class="ico"><use href="assets/icons.svg#i-revision"/></svg></div><div class="stat-label">Need Revision</div><div class="stat-value warn" id="stat-revision">0</div></div>
+          <div class="stat-card green"><div class="stat-icon"><svg class="ico"><use href="assets/icons.svg#i-check"/></svg></div><div class="stat-label">Revised</div><div class="stat-value green" id="stat-revised">0</div></div>
+          <div class="stat-card purple"><div class="stat-icon"><svg class="ico"><use href="assets/icons.svg#i-ai"/></svg></div><div class="stat-label">AI Used</div><div class="stat-value purple" id="stat-ai">0</div></div>
+        </div>
+
+        <div class="revision-panel" id="revision-panel" style="margin-top:18px">
+          <div class="revision-header">
+            <svg class="ico" style="color:var(--warn)"><use href="assets/icons.svg#i-warning"/></svg>
+            <div class="revision-title">Revision Due</div>
+            <button class="btn btn-primary btn-sm" id="start-revision-session-btn" style="margin-left:10px"><svg class="ico sm"><use href="assets/icons.svg#i-play"/></svg> Revision শুরু করুন</button>
+            <button class="btn btn-secondary btn-sm" data-section="revision" style="margin-left:6px">All →</button>
+            <span class="badge" style="margin-left:auto;color:var(--warn)" id="revision-panel-count">0 notes</span>
+          </div>
+          <div class="revision-list" id="revision-list"></div>
+        </div>
+
+        <div class="section-header" style="margin-top:18px"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-notes"/></svg> Recent Notes</div></div>
+        <div class="notes-grid" id="recent-notes-grid"></div>
+
+        <!-- ===== Quick Task Add (dashboard) ===== -->
+        <div class="dashboard-task-shortcut">
+          <svg class="ico" style="color:var(--warn);flex-shrink:0"><use href="assets/icons.svg#i-tasks"/></svg>
+          <input id="quick-task-title" placeholder="দ্রুত task লিখুন..." style="flex:1"/>
+          <input type="time" id="quick-task-time" class="task-time-input"/>
+          <button class="btn btn-primary btn-sm" id="quick-task-btn"><svg class="ico sm"><use href="assets/icons.svg#i-add"/></svg> Add Task</button>
+        </div>
+
+        <div class="dashboard-widget-grid">
+          <div class="preview-card dashboard-task-widget">
+            <div class="preview-head">
+              <div class="preview-title"><svg class="ico"><use href="assets/icons.svg#i-tasks"/></svg> Today's Tasks</div>
+              <button class="btn btn-sm btn-secondary" data-section="tasks">Manage</button>
+            </div>
+            <div class="preview-list" id="dashboard-task-list"><div class="preview-empty">No task yet</div></div>
+          </div>
+          <div class="preview-card dashboard-leaderboard-widget">
+            <div class="preview-head">
+              <div class="preview-title"><svg class="ico"><use href="assets/icons.svg#i-flame"/></svg> Top Focus</div>
+              <button class="btn btn-sm btn-secondary" data-section="leaderboard">Full Rank</button>
+            </div>
+            <div class="preview-list" id="dashboard-leaderboard-list"><div class="preview-empty">No focus data yet</div></div>
+          </div>
+          <div class="preview-card dashboard-prayer-widget" data-feature="prayer">
+            <div class="preview-head">
+              <div class="preview-title"><svg class="ico"><use href="assets/icons.svg#i-prayer"/></svg> <span id="dash-prayer-name">Next prayer</span></div>
+              <button class="btn btn-sm btn-secondary" data-section="prayer">Open</button>
+            </div>
+            <div class="dash-prayer-body">
+              <div class="dash-prayer-time" id="dash-prayer-time">--:--</div>
+              <div class="dash-prayer-countdown" id="dash-prayer-countdown">⏳ --:--:--</div>
+              <div class="dash-prayer-loc" id="dash-prayer-loc">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Community + DM Preview (dashboard) ===== -->
+        <div class="preview-grid" id="dashboard-messages">
+          <div class="preview-card" id="preview-community">
+            <div class="preview-head">
+              <div class="preview-title"><svg class="ico"><use href="assets/icons.svg#i-users"/></svg> Class Community</div>
+              <button class="btn btn-sm btn-secondary" data-section="class-chat">Open</button>
+            </div>
+            <div class="preview-list" id="preview-community-list"><div class="preview-empty">এখনো কোনো message নেই</div></div>
+          </div>
+          <div class="preview-card" id="preview-dm">
+            <div class="preview-head">
+              <div class="preview-title"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Friend Messages</div>
+              <button class="btn btn-sm btn-secondary" data-section="dm">Open</button>
+            </div>
+            <div class="preview-list" id="preview-dm-list"><div class="preview-empty">কোনো friend DM নেই</div></div>
+          </div>
+        </div>
+
+        <!-- ===== More Features ===== -->
+        <div class="section-header" style="margin-top:18px">
+          <div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> More Features</div>
+          <button class="btn btn-secondary btn-sm" id="more-features-toggle" type="button">More Features</button>
+        </div>
+        <div class="feature-grid" id="feature-grid"></div>
+      </section>
+
+      <!-- ===== ALL NOTES ===== -->
+      <section id="view-notes" class="section-view">
+        <div class="section-header">
+          <div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-notes"/></svg> All Notes</div>
+        </div>
+        <div class="filter-tabs" id="filter-tabs"></div>
+        <div class="notes-grid" id="all-notes-grid" style="margin-top:14px"></div>
+      </section>
+
+      <!-- ===== REVISION ===== -->
+      <section id="view-revision" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-revision"/></svg> Revision Center</div></div>
+        <div id="revision-full-list"></div>
+      </section>
+
+      <!-- ===== ADD NOTE ===== -->
+      <section id="view-add" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-add"/></svg> Add a New Note</div></div>
+        <div class="card" style="max-width:780px">
+          <div class="form-group">
+            <label>Title</label>
+            <div style="position:relative">
+              <input id="note-title" placeholder="Newton's Second Law of Motion"/>
+              <button type="button" data-mic-btn data-mic-target="note-title" class="btn btn-secondary btn-sm"
+                      style="position:absolute;top:4px;right:4px" title="Voice to text"><svg class="ico"><use href="assets/icons.svg#i-mic-off"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Subject</label>
+            <select id="note-subject">
+              <option value="">Choose subject</option>
+              <option>Physics</option><option>Chemistry</option><option>Math</option>
+              <option>Biology</option><option>English</option><option>Bangla</option>
+              <option>ICT</option><option>History</option><option>Geography</option><option>Other</option>
+            </select>
+          </div>
+          <div class="form-group" id="note-syllabus-pick-group">
+            <label>Linked Syllabus Chapter <small style="color:var(--text2);font-weight:400">(optional — context shown to AI)</small></label>
+            <select id="note-syllabus-pick"><option value="">— None —</option></select>
+            <div id="note-syllabus-context" class="note-syllabus-context" style="display:none"></div>
+          </div>
+          <div class="form-group">
+            <label>Content</label>
+            <div style="position:relative">
+              <textarea id="note-content" placeholder="Write your note... or press the mic and speak."></textarea>
+              <button type="button" id="mic-btn" class="btn btn-secondary btn-sm" style="position:absolute;top:6px;right:6px"
+                      title="Voice to text"><svg class="ico"><use href="assets/icons.svg#i-mic-off"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Images <small style="color:var(--text2);font-weight:400">(saved on this device only — never uploaded)</small></label>
+            <input type="file" id="note-image-input" accept="image/*" multiple style="margin-bottom:8px"/>
+            <div id="note-image-previews" class="note-img-previews"></div>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-secondary" id="clear-form-btn">Clear</button>
+            <button class="btn btn-primary" id="save-btn"><svg class="ico"><use href="assets/icons.svg#i-save"/></svg> Save Note</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PRAYER ===== -->
+      <section id="view-prayer" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-prayer"/></svg> Prayer Times</div></div>
+        <div class="prayer-countdown-main">
+          <div class="prayer-countdown-label">Next prayer in</div>
+          <div class="prayer-countdown-val" id="prayer-countdown-val">--:--:--</div>
+          <div class="prayer-countdown-name" id="prayer-countdown-name">—</div>
+        </div>
+        <div class="prayer-grid" id="prayer-grid"></div>
+        <div class="prayer-location" id="prayer-location">Loading...</div>
+        <div id="prayer-mini-widget" class="prayer-mini" style="margin-top:18px;max-width:300px">
+          <div class="prayer-mini-title"><svg class="ico"><use href="assets/icons.svg#i-prayer"/></svg> Quick view</div>
+          <div class="prayer-mini-next" id="prayer-mini-name">—</div>
+          <div class="prayer-mini-time" id="prayer-mini-time">—</div>
+          <div class="prayer-mini-countdown" id="prayer-mini-countdown">—</div>
+        </div>
+      </section>
+
+      <!-- ===== FOCUS ===== -->
+      <section id="view-focus" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-focus"/></svg> Focus Timer</div></div>
+        <div class="focus-section">
+          <div class="focus-card">
+            <div class="focus-ring"><div class="focus-ring-inner"><svg class="ico"><use href="assets/icons.svg#i-target"/></svg></div></div>
+            <div class="focus-big-timer" id="focus-big-timer">00:00:00</div>
+            <div class="focus-notes-box">
+              <label>Notes for this session</label>
+              <textarea id="focus-session-note" placeholder="Studying Chapter 3 Physics..."></textarea>
+            </div>
+            <button id="focus-main-toggle" class="btn btn-primary btn-block btn-lg"><svg class="ico"><use href="assets/icons.svg#i-play"/></svg> Start Focus</button>
+          </div>
+          <div class="focus-history">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-clock"/></svg> History</div>
+            <div id="focus-history-list" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SYLLABUS + AI QUESTIONS ===== -->
+      <section id="view-syllabus" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-syllabus"/></svg> Syllabus + AI Questions</div></div>
+        <div class="syllabus-grid">
+          <div class="card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-book-open"/></svg> Add chapter / topic</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Subject</label>
+                <input id="syllabus-subject" placeholder="Physics"/>
+              </div>
+              <div class="form-group">
+                <label>Chapter</label>
+                <input id="syllabus-topic" placeholder="Newton's laws of motion"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Note (optional)</label>
+              <textarea id="syllabus-note" placeholder="Important formulas, key points..."></textarea>
+            </div>
+            <button class="btn btn-primary btn-block" id="add-syllabus-btn"><svg class="ico"><use href="assets/icons.svg#i-add"/></svg> Add to syllabus</button>
+            <div class="card-title" style="margin-top:18px"><svg class="ico"><use href="assets/icons.svg#i-syllabus"/></svg> Chapters</div>
+            <div id="chapter-list" class="chapter-list" style="margin-top:8px"></div>
+          </div>
+
+          <div>
+            <div class="ai-questions-header">
+              <div class="ai-questions-title"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> AI Practice Questions <span id="ai-q-cache-tag" class="chapter-cache-tag" style="display:none"></span></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" id="ai-q-generate-btn" data-needs-online><svg class="ico sm"><use href="assets/icons.svg#i-sparkles"/></svg> Generate</button>
+                <button class="btn btn-ai btn-sm" id="ai-q-regenerate-btn" data-needs-online><svg class="ico sm"><use href="assets/icons.svg#i-refresh"/></svg> Generate New</button>
+              </div>
+            </div>
+            <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px" id="ai-q-chapter-title">Select a chapter</div>
+            <div class="card">
+              <div class="questions-panel" id="ai-q-list">
+                <div class="empty-state">
+                  <svg class="ico xl"><use href="assets/icons.svg#i-sparkles"/></svg>
+                  <div class="empty-title">Pick a chapter</div>
+                  <div class="empty-text">Cached questions দেখান বা নতুন তৈরি করুন</div>
+                </div>
+              </div>
+            </div>
+            <p class="mini-note">যদি অন্য student আগেই এই class এর এই chapter এ প্রশ্ন তৈরি করে রাখে, automatic cache থেকে দেখাবে। "Generate New" চাপলে নতুন question set তৈরি হবে।</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-syllabus"/></svg> Upload Syllabus (PDF / Image) — OCR with AI</div>
+          <p class="mini-note" style="font-size:.78rem;color:var(--text2);margin-bottom:8px">
+            File আপনার device-এ IndexedDB-তে save হবে — server-এ যাবে না। AI OCR for chapter extraction uses your Gemini API key.
+          </p>
+          <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label>Subject (used to tag extracted chapters)</label>
+              <input id="syllabus-ocr-subject" placeholder="Physics"/>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>File</label>
+              <input type="file" id="syllabus-ocr-file" accept="image/*,application/pdf"/>
+            </div>
+          </div>
+          <button class="btn btn-ai btn-sm" id="syllabus-ocr-run-btn" data-needs-online><svg class="ico sm"><use href="assets/icons.svg#i-ai"/></svg> Extract Chapters with AI</button>
+          <div id="syllabus-ocr-status" class="mini-note" style="margin-top:8px;font-size:.78rem"></div>
+          <div id="syllabus-ocr-result" style="margin-top:10px"></div>
+          <div class="card-title" style="margin-top:14px;font-size:.95rem"><svg class="ico sm"><use href="assets/icons.svg#i-book-open"/></svg> Saved Files</div>
+          <div id="syllabus-files-list" class="syllabus-files-list" style="margin-top:6px"></div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-target"/></svg> Progress per chapter</div>
+          <div id="syllabus-list" style="margin-top:8px"></div>
+        </div>
+      </section>
+
+      <!-- ===== YOUTUBE COURSES ===== -->
+      <section id="view-courses" class="section-view">
+        <div class="section-header">
+          <div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-play"/></svg> YouTube Courses</div>
+        </div>
+        <div class="card" style="max-width:780px">
+          <p class="mini-note" style="font-size:.82rem;color:var(--text2);margin-bottom:8px">
+            Paste one or more YouTube playlist or video links (one per line). প্রতিটি video / playlist একটি আলাদা shortcut হিসেবে যোগ হবে। Saved on this device only.
+          </p>
+          <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label>Course Title</label>
+              <input id="yt-course-title" placeholder="HSC Physics — full course"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>YouTube link(s) — one per line (playlist or single video)</label>
+            <textarea id="yt-course-url" rows="4" placeholder="https://www.youtube.com/playlist?list=PL...&#10;https://youtu.be/dQw4w9WgXcQ&#10;https://www.youtube.com/watch?v=..."></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" id="yt-course-add-btn"><svg class="ico sm"><use href="assets/icons.svg#i-add"/></svg> Add course</button>
+        </div>
+
+        <div id="yt-course-list" class="yt-course-list" style="margin-top:14px"></div>
+
+        <div id="yt-course-player-wrap" class="yt-player-wrap" style="display:none;margin-top:14px">
+          <div class="yt-player-inner">
+            <div id="yt-course-player-frame"></div>
+            <div class="yt-player-side">
+              <div class="card-title" id="yt-course-player-title">—</div>
+              <div id="yt-course-player-list" class="yt-player-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TASKS ===== -->
+      <section id="view-tasks" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-tasks"/></svg> Tasks</div></div>
+        <div class="card" style="max-width:720px">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Title</label>
+              <input id="task-title" placeholder="5টি math অংক সমাধান করো"/>
+            </div>
+            <div class="form-group">
+              <label>Reminder Time</label>
+              <input type="time" id="task-time"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Source</label>
+              <select id="task-source">
+                <option value="custom">Custom</option>
+                <option value="daily">Daily</option>
+                <option value="repeated">Daily Repeat</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Repeat</label>
+              <select id="task-repeat">
+                <option value="none">একবার</option>
+                <option value="daily">প্রতিদিন</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Details</label>
+            <textarea id="task-details" placeholder="Notes, link, বা extra info"></textarea>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-primary" id="add-task-btn"><svg class="ico"><use href="assets/icons.svg#i-add"/></svg> Task যোগ করুন</button>
+          </div>
+        </div>
+        <div id="task-list" style="margin-top:14px"></div>
+      </section>
+
+      <!-- ===== SETTINGS ===== -->
+      <section id="view-settings" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-settings"/></svg> Settings</div></div>
+        <div class="manage-grid">
+          <div class="manage-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-user"/></svg> Profile</div>
+            <div class="profile-pic-row">
+              <div class="profile-preview" id="profile-preview"><div class="profile-fallback">S</div></div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <input type="file" id="profile-file-input" accept="image/*" style="display:none"/>
+                <button type="button" class="btn btn-secondary btn-sm" id="profile-pick-btn"><svg class="ico"><use href="assets/icons.svg#i-image"/></svg> Upload photo</button>
+                <button type="button" class="btn btn-danger btn-sm" id="profile-remove-btn">Remove</button>
+              </div>
+            </div>
+            <div class="form-group"><label>Full Name</label><input id="settings-name"/></div>
+            <div class="form-group"><label>Institution</label><input id="settings-institution"/></div>
+            <div class="form-row">
+              <div class="form-group"><label>District</label><input id="settings-district" placeholder="Dhaka"/></div>
+              <div class="form-group"><label>Upazila / City</label><input id="settings-upazila" placeholder="Dhanmondi"/></div>
+            </div>
+            <div class="form-group"><label>Class / Level</label><select id="settings-class"></select></div>
+            <div class="form-row">
+              <div class="form-group"><label>Religion</label>
+                <select id="settings-religion">
+                  <option value="islam">Islam</option><option value="hindu">Hindu</option>
+                  <option value="christian">Christian</option><option value="buddhist">Buddhist</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Prayer reminder</label>
+                <select id="settings-prayer-enabled">
+                  <option value="on">On</option><option value="off">Off</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Prayer method</label>
+                <select id="settings-prayer-method">
+                  <option value="1">University of Islamic Sciences</option>
+                  <option value="2">ISNA</option>
+                  <option value="3">Muslim World League</option>
+                  <option value="4">Umm Al-Qura</option>
+                  <option value="5">Egyptian Authority</option>
+                  <option value="7">Institute of Geophysics</option>
+                  <option value="8">Gulf Region</option>
+                  <option value="9">Kuwait</option>
+                  <option value="10">Qatar</option>
+                  <option value="11">Singapore</option>
+                  <option value="12">France</option>
+                  <option value="13">Turkey</option>
+                  <option value="14">Russia</option>
+                  <option value="15">Moonsighting Committee</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Asr madhhab</label>
+                <select id="settings-prayer-school">
+                  <option value="0">Standard / Shafi</option>
+                  <option value="1">Hanafi</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="manage-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-key"/></svg> Your AI Keys</div>
+            <p class="mini-note">নিজের API key দিলে free trial শেষ হলেও AI feature কাজ করবে।</p>
+            <div class="form-group"><label>Google Gemini API Key</label>
+              <div class="input-with-action">
+                <input type="password" id="settings-gemini-key" placeholder="AIzaSy..."/>
+                <button type="button" class="input-action" data-toggle-pw="settings-gemini-key"><svg class="ico"><use href="assets/icons.svg#i-eye"/></svg></button>
+              </div>
+            </div>
+            <div class="form-group"><label>Groq API Key</label>
+              <div class="input-with-action">
+                <input type="password" id="settings-groq-key" placeholder="gsk_..."/>
+                <button type="button" class="input-action" data-toggle-pw="settings-groq-key"><svg class="ico"><use href="assets/icons.svg#i-eye"/></svg></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Total AI requests used</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge" style="font-size:.84rem"><svg class="ico sm"><use href="assets/icons.svg#i-ai"/></svg> <span id="settings-api-usage">0</span></span>
+                <span id="settings-trial-info" style="font-size:.84rem"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="manage-card" id="install-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> Install as App</div>
+            <p class="mini-note">Home screen-এ add করলে fast ও offline access পাবেন। Browser tab খোঁজা লাগবে না।</p>
+            <div id="install-status" class="install-status"></div>
+            <button class="btn btn-primary btn-block" id="settings-install-btn" type="button">
+              <svg class="ico"><use href="assets/icons.svg#i-add"/></svg> Install App
+            </button>
+            <p class="mini-note" id="install-ios-hint" style="display:none;margin-top:8px">
+              📱 <strong>iPhone/iPad:</strong> Safari-তে Share <svg class="ico sm"><use href="assets/icons.svg#i-share"/></svg> → <strong>"Add to Home Screen"</strong> সিলেক্ট করুন।
+            </p>
+          </div>
+
+          <div class="manage-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg> Subscription</div>
+            <p class="mini-note">14 day free trial — তারপরে নিজের API key দিন বা subscribe করুন।</p>
+            <button class="btn btn-primary btn-block" data-section="payment"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg> View packages</button>
+            <button class="btn btn-secondary btn-block" data-section="refer" style="margin-top:8px"><svg class="ico"><use href="assets/icons.svg#i-gift"/></svg> Refer friends — get 1 month free</button>
+          </div>
+        </div>
+        <div class="manage-card" style="margin-top:0">
+          <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-revision"/></svg> Revision Settings</div>
+          <div class="form-group">
+            <label>Revision session duration (minutes)</label>
+            <input type="number" id="settings-rev-duration" value="60" min="5" max="240"/>
+            <p class="mini-note">Revision শুরু করলে এই সময় পর timer শেষ হবে।</p>
+          </div>
+          <div class="form-group">
+            <label>Revision notification</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="settings-notif-status" style="font-size:.84rem;color:var(--text2)">চালু</span>
+              <button class="btn btn-secondary btn-sm" id="settings-disable-notif-btn">Notification বন্ধ করতে Request পাঠান</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button class="btn btn-success" id="save-settings-btn"><svg class="ico"><use href="assets/icons.svg#i-save"/></svg> Save Settings</button>
+        </div>
+      </section>
+
+      <!-- ===== REFER & EARN ===== -->
+      <section id="view-refer" class="section-view"></section>
+
+      <!-- ===== COMMUNITY ===== -->
+      <section id="view-community" class="section-view"></section>
+
+      <!-- ===== SUBSCRIBE / PAYMENT ===== -->
+      <section id="view-payment" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg> Subscribe</div></div>
+        <p class="mini-note">প্রথম <strong id="trial-days-note">14</strong> দিন free trial। তারপরে নিচের যেকোনো package নিন বা Settings এ নিজের API key দিন। বন্ধুকে invite করলে ১ মাস free!</p>
+        <div id="package-list" class="package-grid" style="margin-top:14px"></div>
+      </section>
+
+      <!-- ===== LEADERBOARD ===== -->
+      <section id="view-leaderboard" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-flame"/></svg> Leaderboard</div></div>
+        <p class="mini-note">Focus Timer যত বেশি ব্যবহার হয়, র্যাঙ্ক তত উপরে। সব class এর সব student real-time সময় অনুযায়ী র্যাঙ্ক হচ্ছে।</p>
+        <div class="lb-controls">
+          <label>Filter by class:</label>
+          <select id="lb-class-filter"></select>
+        </div>
+        <div class="card" id="lb-list" style="margin-top:12px"></div>
+      </section>
+
+      <!-- ===== CLASS COMMUNITY ===== -->
+      <section id="view-class-chat" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-megaphone"/></svg> Class Community</div></div>
+        <p class="mini-note">আপনার class এর সবাই এই গ্রুপে আছেন — leave করা যাবে না। সকলের সামনে কথা বলুন।</p>
+        <div class="chat-shell">
+          <div class="chat-shell-messages" id="cc-messages"></div>
+          <div class="chat-shell-input">
+            <textarea id="cc-input" placeholder="কিছু লিখুন..." data-mic-target></textarea>
+            <button class="btn btn-secondary" data-mic-btn title="Voice → text"><svg class="ico"><use href="assets/icons.svg#i-mic-off"/></svg></button>
+            <button class="btn btn-primary" id="cc-send-btn"><svg class="ico"><use href="assets/icons.svg#i-send"/></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== FRIENDS ===== -->
+      <section id="view-friends" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-users"/></svg> Friends</div></div>
+        <p class="mini-note">শুধু আপনার class এর student দের সাথে friend হওয়া যাবে।</p>
+        <div class="manage-grid">
+          <div class="manage-card">
+            <div class="card-title">Pending requests</div>
+            <div id="friends-requests-list"></div>
+          </div>
+          <div class="manage-card">
+            <div class="card-title">My friends</div>
+            <div id="friends-list"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-title">Classmates — send a request</div>
+          <div class="friends-search-wrap"><svg class="ico search-icon"><use href="assets/icons.svg#i-search"/></svg><input type="search" id="friends-search-input" placeholder="নাম দিয়ে খুঁজুন..."/></div>
+          <div id="friends-classmates-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== DIRECT MESSAGES ===== -->
+      <section id="view-dm" class="section-view">
+        <div class="section-header"><div class="section-title" id="dm-header"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Messages</div></div>
+        <div class="dm-layout">
+          <aside class="dm-sidebar" id="dm-friend-list"></aside>
+          <div class="dm-main">
+            <div class="chat-shell-messages" id="dm-messages"></div>
+            <div class="chat-shell-input">
+              <textarea id="dm-input" placeholder="Message লিখুন..."></textarea>
+              <button class="btn btn-secondary" data-mic-btn title="Voice → text"><svg class="ico"><use href="assets/icons.svg#i-mic-off"/></svg></button>
+              <button class="btn btn-primary" id="dm-send-btn"><svg class="ico"><use href="assets/icons.svg#i-send"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== QUIZ ===== -->
+      <section id="view-quiz" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> Monthly Quiz Campaigns</div></div>
+        <p class="mini-note">প্রতি মাসে নতুন quiz হয়। Active quiz এ "Start Quiz" চাপলে শুরু হবে।</p>
+        <div id="quiz-list"></div>
+      </section>
+
+      <!-- ===== SHARED NOTES ===== -->
+      <section id="view-shared-notes" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-share"/></svg> Shared with me</div></div>
+        <p class="mini-note">Friend দের share করা note। Edit access থাকলে নিচে নিজের লেখা যোগ করতে পারবেন (আগের লেখা মুছবে না)।</p>
+        <div id="shared-notes-list"></div>
+      </section>
+
+      <!-- ===== HELP / SUPPORT ===== -->
+      <section id="view-help" class="section-view">
+        <div class="section-header"><div class="section-title"><svg class="ico"><use href="assets/icons.svg#i-help"/></svg> Help & Support</div></div>
+        <div class="manage-grid">
+          <div class="manage-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-help"/></svg> FAQ</div>
+            <div class="faq" style="margin-top:10px">
+              <div class="faq-item"><button class="faq-q">How does the 14-day free trial work?<svg class="ico"><use href="assets/icons.svg#i-chevron-down"/></svg></button>
+                <div class="faq-a">Register করার পর থেকে ১৪ দিন full AI feature ফ্রি। Trial শেষ হলে Settings এ নিজের Gemini/Groq API key দিন বা subscribe করুন।</div></div>
+              <div class="faq-item"><button class="faq-q">কোথায় থেকে free Gemini API key পাব?<svg class="ico"><use href="assets/icons.svg#i-chevron-down"/></svg></button>
+                <div class="faq-a">Visit <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a> — Google account দিয়ে login করে "Create API key" চাপুন। Settings-এ paste করুন।</div></div>
+              <div class="faq-item"><button class="faq-q">আমার data কি অন্য student দেখতে পাবে?<svg class="ico"><use href="assets/icons.svg#i-chevron-down"/></svg></button>
+                <div class="faq-a">না। প্রতিটি student-এর note/task/syllabus তার নিজস্ব Firestore path-এ রাখা হয় (users/{your-uid}/notes), অন্য কেউ access পায় না।</div></div>
+              <div class="faq-item"><button class="faq-q">Offline-এ কী হবে?<svg class="ico"><use href="assets/icons.svg#i-chevron-down"/></svg></button>
+                <div class="faq-a">App offline-এও খোলে — উপরে "Offline Mode" badge আসবে। নতুন note add করতে পারবেন; internet ফিরলে auto sync হয়ে যাবে। AI/Chat offline-এ কাজ করে না।</div></div>
+              <div class="faq-item"><button class="faq-q">AI Question generator কীভাবে কাজ করে?<svg class="ico"><use href="assets/icons.svg#i-chevron-down"/></svg></button>
+                <div class="faq-a">Class+Subject+Chapter এর জন্য একবার তৈরি হলে cache হয়ে যায়। অন্য student same chapter চাইলে সেই cache থেকেই দেখাবে। "Generate New" চাপলে fresh batch তৈরি হবে।</div></div>
+            </div>
+          </div>
+
+          <div class="manage-card">
+            <div class="card-title"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Live Support Chat</div>
+            <p class="mini-note">নিচের ডানদিকের purple বুদবুদে ক্লিক করুন → Support tab এ যান। Support team আপনার message দেখে reply দিবে।</p>
+            <button class="btn btn-secondary btn-block" onclick="document.getElementById('chat-fab').click(); setTimeout(()=>document.querySelector('[data-chat-mode=support]')?.click(),200)">
+              <svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Open support chat
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer id="app-footer" class="app-footer"></footer>
+
+  <!-- ===== Bottom nav (mobile) ===== -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" data-section="dashboard"><svg class="ico"><use href="assets/icons.svg#i-dashboard"/></svg>Home</button>
+    <button class="bottom-nav-item" data-section="notes"><svg class="ico"><use href="assets/icons.svg#i-notes"/></svg>Notes</button>
+    <button class="bottom-nav-item" data-section="revision"><svg class="ico"><use href="assets/icons.svg#i-clock"/></svg>Revise</button>
+    <button class="bottom-nav-item" data-section="leaderboard"><svg class="ico"><use href="assets/icons.svg#i-flame"/></svg>Rank</button>
+    <button class="bottom-nav-item" data-section="settings"><svg class="ico"><use href="assets/icons.svg#i-settings"/></svg>More</button>
+  </nav>
+</div>
+
+<!-- ============== Note Detail Modal ============== -->
+<div id="detail-modal" class="modal-overlay">
+  <div class="modal lg">
+    <div class="modal-header">
+      <div class="modal-title" id="detail-title">Note</div>
+      <button class="modal-close" data-close-modal="detail-modal"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="detail-subject-badge" class="note-detail-subject"></div>
+      <div class="note-detail-content" id="detail-content"></div>
+      <div id="detail-images" class="note-img-previews" style="margin-top:8px"></div>
+      <div class="note-detail-meta"><span id="detail-created"></span></div>
+      <div id="ai-area"></div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <button class="btn btn-danger" id="detail-delete-btn"><svg class="ico"><use href="assets/icons.svg#i-trash"/></svg> Delete</button>
+      <button class="btn btn-secondary" id="detail-share-btn" data-needs-online><svg class="ico"><use href="assets/icons.svg#i-share"/></svg> Share with friend</button>
+      <button class="btn btn-secondary" id="detail-tts-btn" title="Listen to note + AI explanation"><svg class="ico"><use href="assets/icons.svg#i-mic"/></svg> Listen</button>
+      <button class="btn btn-ai" id="detail-quiz-btn" data-needs-online title="Generate AI quiz from this note"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> Make Quiz</button>
+      <button class="btn btn-ai" id="explain-ai-btn" data-needs-online><svg class="ico"><use href="assets/icons.svg#i-ai"/></svg> Explain with AI</button>
+      <button class="btn btn-success" id="revise-btn"><svg class="ico"><use href="assets/icons.svg#i-check"/></svg> Mark Revised</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Settings Modal (deep link) ============== -->
+<div id="settings-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><svg class="ico"><use href="assets/icons.svg#i-settings"/></svg> Quick Settings</div>
+      <button class="modal-close" id="close-settings-btn"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p class="mini-note">Full settings sidebar-এ "Settings" tab-এ পাবেন। এখান থেকেও API keys edit করা যায়।</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Payment Modal ============== -->
+<div id="payment-modal" class="modal-overlay">
+  <div class="modal lg">
+    <div class="modal-header">
+      <div class="modal-title"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg> Complete payment</div>
+      <button class="modal-close" data-close-modal="payment-modal"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div id="selected-pkg-summary"></div>
+
+      <div class="card-title" style="margin-top:14px"><svg class="ico"><use href="assets/icons.svg#i-credit"/></svg> Choose payment method</div>
+      <div id="pay-method-list" class="pay-method-list"></div>
+      <div id="pay-method-instructions"></div>
+
+      <div class="card-title" style="margin-top:10px"><svg class="ico"><use href="assets/icons.svg#i-check"/></svg> Confirm your payment</div>
+      <div class="form-row">
+        <div class="form-group"><label>Transaction ID</label><input id="pay-trxid" placeholder="ABC123XYZ"/></div>
+        <div class="form-group"><label>Sender number</label><input id="pay-sender" placeholder="017XXXXXXXX"/></div>
+      </div>
+      <p class="mini-note">Submit করার পর আপনার payment verify হলে account upgrade হবে।</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="payment-modal">Cancel</button>
+      <button class="btn btn-success" id="submit-payment-btn"><svg class="ico"><use href="assets/icons.svg#i-check"/></svg> Submit payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Share Note Modal ============== -->
+<div id="share-note-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><svg class="ico"><use href="assets/icons.svg#i-share"/></svg> Share <span id="share-note-title"></span></div>
+      <button class="modal-close" data-close-modal="share-note-modal"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Friend</label><select id="share-friend-pick"></select></div>
+      <div class="form-group"><label>Access</label>
+        <select id="share-access">
+          <option value="view">View only</option>
+          <option value="edit">Edit (append-only — original লেখা মুছবে না)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="share-note-modal">Cancel</button>
+      <button class="btn btn-primary" id="share-note-confirm-btn"><svg class="ico"><use href="assets/icons.svg#i-share"/></svg> Share</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Quiz Overlay ============== -->
+<div id="quiz-overlay" class="modal-overlay">
+  <div class="modal lg">
+    <div class="modal-header">
+      <div class="modal-title"><svg class="ico"><use href="assets/icons.svg#i-sparkles"/></svg> Quiz</div>
+      <button class="modal-close" data-close-modal="quiz-overlay"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body" id="quiz-body"></div>
+  </div>
+</div>
+
+<!-- ============== Boot Loading ============== -->
+<div id="boot-loader" class="boot-loader">
+  <div class="boot-orb"><svg class="ico"><use href="assets/icons.svg#i-brain"/></svg></div>
+  <div class="boot-spinner"></div>
+  <div class="boot-text">Loading…</div>
+</div>
+
+<!-- ============== Mobile Drawer (clone of sidebar) ============== -->
+<div class="drawer-scrim" id="drawer-scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-title"><svg class="ico"><use href="assets/icons.svg#i-brain"/></svg> Second Brain</div>
+    <button class="modal-close" id="drawer-close"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+  </div>
+  <nav class="drawer-nav" id="drawer-nav">
+    <!-- Filled dynamically by mobile-ui.js by mirroring the sidebar -->
+  </nav>
+</aside>
+
+<!-- ============== Revision Session Overlay ============== -->
+<div id="revision-session-overlay" style="position:fixed;inset:0;z-index:1901;background:rgba(0,0,0,.92);color:#fff;display:none" class="rev-session-overlay-wrap">
+  <div style="background:radial-gradient(ellipse at center,rgba(245,158,11,.15) 0%,transparent 70%);position:absolute;inset:0;pointer-events:none"></div>
+  <div style="font-size:1.1rem;opacity:.7;margin-bottom:10px">📚 Revision Session চলছে</div>
+  <div id="revision-session-timer" style="font-size:5rem;font-weight:800;font-family:Syne,sans-serif;letter-spacing:2px;margin:16px 0">60:00</div>
+  <div style="opacity:.6;margin-bottom:28px">মনোযোগ দিয়ে revision করুন</div>
+  <button id="rev-session-stop-btn" class="btn btn-danger"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg> বন্ধ করুন</button>
+</div>
+
+<!-- ============== Focus Mode Overlay ============== -->
+<div id="focus-mode-overlay">
+  <div class="focus-mode-bg"></div>
+  <div class="focus-mode-label">🧠 Focus Mode চলছে</div>
+  <div class="focus-mode-timer" id="focus-mode-timer-display">25:00</div>
+  <div style="font-size:.9rem;opacity:.6;margin-bottom:24px" id="focus-mode-session-label">Focus Session</div>
+  <div class="focus-mode-actions">
+    <button class="btn btn-secondary" id="focus-mode-pause-btn"><svg class="ico"><use href="assets/icons.svg#i-pause"/></svg> Pause</button>
+    <button class="btn btn-danger" id="focus-mode-stop-btn"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg> বন্ধ করুন</button>
+  </div>
+</div>
+
+<!-- ============== Feature Embed Modal ============== -->
+<div id="feature-modal" class="modal-overlay">
+  <div class="modal lg">
+    <div class="modal-header">
+      <div class="modal-title" id="feature-modal-title">Feature</div>
+      <button class="modal-close" data-close-modal="feature-modal"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="modal-body" id="feature-modal-body"></div>
+  </div>
+</div>
+
+<!-- ============== Floating note FAB (mobile + desktop) ============== -->
+<button class="note-fab" id="note-fab" title="Quick add note"><svg class="ico"><use href="assets/icons.svg#i-add"/></svg></button>
+
+<!-- ============== Background Focus floating timer (always visible while tracking) ============== -->
+<div id="brain-focus-floater" title="Background focus tracking — click to open dashboard">
+  <span class="pulse"></span>
+  <span><svg class="ico sm"><use href="assets/icons.svg#i-brain"/></svg> Focus</span>
+  <span class="ft" id="brain-focus-floater-time">00:00:00</span>
+  <button id="brain-focus-floater-stop" title="Stop background focus">✕</button>
+</div>
+
+<!-- ============== Install / Download App card ============== -->
+<div class="install-card" id="install-pill" role="status">
+  <button class="install-close" data-install-close aria-label="Dismiss">
+    <svg class="ico"><use href="assets/icons.svg#i-x"/></svg>
+  </button>
+  <div class="install-icon">
+    <svg class="ico"><use href="assets/icons.svg#i-brain"/></svg>
+  </div>
+  <div class="install-body">
+    <div class="install-heading">Second Brain অ্যাপ ইনস্টল করুন</div>
+    <div class="install-sub">Home-screen থেকে এক tap-এ open • Offline কাজ করে • Push notifications</div>
+  </div>
+  <button class="install-go" data-install-go>
+    <svg class="ico"><use href="assets/icons.svg#i-add"/></svg>
+    <span>Install</span>
+  </button>
+</div>
+
+<!-- ============== Chat Hub (long-press chat-fab) ============== -->
+<div class="chat-hub" id="chat-hub" role="dialog" aria-modal="true">
+  <div class="chat-hub-card">
+    <div class="chat-hub-head">
+      <span><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Chat options</span>
+      <button data-hub-close aria-label="Close">×</button>
+    </div>
+    <button class="chat-hub-btn" data-hub-go="ai">
+      <svg class="ico"><use href="assets/icons.svg#i-ai"/></svg>
+      <span class="chat-hub-btn-title">AI Chat</span>
+      <span class="chat-hub-btn-sub">Notes এর উপর নির্ভর করে AI ঊত্তর দিবে</span>
+    </button>
+    <button class="chat-hub-btn" data-hub-go="support">
+      <svg class="ico"><use href="assets/icons.svg#i-help"/></svg>
+      <span class="chat-hub-btn-title">Support Chat</span>
+      <span class="chat-hub-btn-sub">Support Team-এর সাথে সরাসরি চ্যাট</span>
+    </button>
+    <button class="chat-hub-btn" data-hub-go="class-chat">
+      <svg class="ico"><use href="assets/icons.svg#i-users"/></svg>
+      <span class="chat-hub-btn-title">Class Community</span>
+      <span class="chat-hub-btn-sub">আপনার class এর group chat</span>
+    </button>
+    <button class="chat-hub-btn" data-hub-go="dm">
+      <svg class="ico"><use href="assets/icons.svg#i-chat"/></svg>
+      <span class="chat-hub-btn-title">Friends DM</span>
+      <span class="chat-hub-btn-sub">Friend-এর সাথে প্রাইভেট message</span>
+    </button>
+    <button class="chat-hub-btn" data-hub-go="friends">
+      <svg class="ico"><use href="assets/icons.svg#i-user"/></svg>
+      <span class="chat-hub-btn-title">Friends</span>
+      <span class="chat-hub-btn-sub">Friend request পাঠান বা accept করুন</span>
+    </button>
+    <button class="chat-hub-btn" data-hub-go="shared-notes">
+      <svg class="ico"><use href="assets/icons.svg#i-share"/></svg>
+      <span class="chat-hub-btn-title">Shared Notes</span>
+      <span class="chat-hub-btn-sub">Friend-এর share করা note</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============== Chat ============== -->
+<button class="chat-fab" id="chat-fab" title="Chat — long press for more options"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg></button>
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-title"><svg class="ico"><use href="assets/icons.svg#i-chat"/></svg> Chat</div>
+    <button class="modal-close" id="chat-close-btn"><svg class="ico"><use href="assets/icons.svg#i-x"/></svg></button>
+  </div>
+  <div class="chat-tabs">
+    <button class="chat-tab active" data-chat-mode="ai">AI</button>
+    <button class="chat-tab" data-chat-mode="support">Support Chat</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-msg system">কেমন আছেন? AI বা Support — যাকে message দিতে চান উপরের tab থেকে select করুন।</div>
+  </div>
+  <div class="chat-input-area">
+    <input class="chat-input" id="chat-input" placeholder="Message লিখুন..."/>
+    <button class="chat-send" id="chat-send-btn" data-needs-online><svg class="ico"><use href="assets/icons.svg#i-send"/></svg></button>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
