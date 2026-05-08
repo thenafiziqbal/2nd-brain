@@ -91,7 +91,12 @@ function maybePushNotify(items){
   for(const n of items || []){
     if(!isWithinSchedule(n, now)) continue;
     const limit = Math.max(1, n.repeatLimit || 1);
-    const intervalMs = Math.max(60_000, (n.intervalMinutes || 0) * 60_000);
+    // intervalMinutes = 0 means "no enforced delay" (immediate re-push up to
+    // repeatLimit). Anything > 0 still gets clamped to a 60s minimum so we
+    // don't spam users every snapshot tick.
+    const intervalMs = (n.intervalMinutes || 0) > 0
+      ? Math.max(60_000, n.intervalMinutes * 60_000)
+      : 0;
     const seen = map[n.id] || { count: 0, lastAt: 0 };
     if(seen.count >= limit) continue;
     if(seen.count > 0 && intervalMs && now.getTime() - seen.lastAt < intervalMs) continue;
