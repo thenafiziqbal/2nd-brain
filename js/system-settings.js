@@ -38,14 +38,6 @@ export function watchSystemSettings(){
   // Once a user is authenticated, subscribe to /system_client/keys to pick up
   // imgbbKey + youtubeApiKey that admins now store outside the public doc.
   on('auth-ready', () => {
-    if(!state.user){
-      // Signed out — drop any cached client keys so they aren't reused
-      // by a different user later.
-      if(unsubClientKeys){ try { unsubClientKeys(); } catch(e){} unsubClientKeys = null; }
-      clientKeys = {};
-      mergeAndEmit();
-      return;
-    }
     // Always tear down any previous (possibly dead) listener before
     // re-subscribing so a sign-out → sign-in cycle gets fresh data.
     if(unsubClientKeys){ try { unsubClientKeys(); } catch(e){} unsubClientKeys = null; }
@@ -55,6 +47,14 @@ export function watchSystemSettings(){
         mergeAndEmit();
       }, err => { /* permission errors after sign-out — ignore */ });
     } catch(e){ /* ignore */ }
+  });
+
+  // On sign-out, drop the listener and clear cached keys so they aren't
+  // leaked into a different user's session.
+  on('auth-signed-out', () => {
+    if(unsubClientKeys){ try { unsubClientKeys(); } catch(e){} unsubClientKeys = null; }
+    clientKeys = {};
+    mergeAndEmit();
   });
 
   unsubs.push(onSnapshot(doc(db,'system','free_tier'), snap => {
