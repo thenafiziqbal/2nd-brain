@@ -106,7 +106,7 @@ export function renderSyllabus(){
         ${linked.length
           ? `<ul>${linked.slice(0, 6).map(n => `
               <li>
-                <a href="#" data-open-note="${esc(n.id)}" style="text-decoration:none;color:inherit;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.title || '(no title)')}</a>
+                <a href="javascript:void(0)" data-open-note="${esc(n.id)}" style="text-decoration:none;color:inherit;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.title || '(no title)')}</a>
                 <span style="font-size:.7rem;color:var(--text2);flex-shrink:0">${n.revised ? '✓' : ''}</span>
               </li>`).join('')}</ul>`
           : `<div class="empty">এই chapter এ কোনো note নেই</div>`

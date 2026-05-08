@@ -24,7 +24,7 @@ export function initUI(){
 
   // Generic delegation — keeps event handlers off every render.
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-open-note]');     if(t) return openNoteDetail(t.dataset.openNote);
+    const t = e.target.closest('[data-open-note]');     if(t){ if(t.tagName === 'A') e.preventDefault(); return openNoteDetail(t.dataset.openNote); }
     const d = e.target.closest('[data-delete-note]');   if(d){ e.stopPropagation(); return deleteNote(d.dataset.deleteNote); }
     const r = e.target.closest('[data-mark-revised]');  if(r) return markRevised(r.dataset.markRevised);
     const ts = e.target.closest('[data-toggle-topic]'); if(ts) return toggleSyllabusDone(ts.dataset.toggleTopic);
