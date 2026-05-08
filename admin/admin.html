@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Second Brain — Admin</title>
+<link rel="icon" href="../assets/logo.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"/>
+<link rel="stylesheet" href="css/admin.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div id="svg-host" hidden></div>
+<script>
+  fetch('../assets/icons.svg').then(r => r.text()).then(t => document.getElementById('svg-host').innerHTML = t).catch(()=>{});
+</script>
+
+<!-- ===== AUTH GATE ===== -->
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <h2><svg class="ico lg"><use href="../assets/icons.svg#i-shield"/></svg> Secure Login</h2>
+    <p style="font-size:.84rem;color:var(--text2);margin-bottom:14px" id="admin-login-note">Authorized access only — password দিন।</p>
+    <div class="form-group"><label>Password</label><input id="admin-password" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
+    <button class="btn btn-primary" id="admin-login-btn" style="width:100%"><svg class="ico"><use href="../assets/icons.svg#i-logout" style="transform:scaleX(-1)"/></svg> Login</button>
+    <div id="gate-err" class="gate-err"></div>
+  </div>
+</div>
+
+<div class="toast-host" id="toast-host"></div>
+
+<div class="shell">
+  <aside class="aside">
+    <div class="aside-brand">
+      <div class="icn"><svg class="ico"><use href="../assets/icons.svg#i-brain"/></svg></div>
+      <div><strong>Second Brain</strong><br><small>Management Panel</small></div>
+    </div>
+    <div class="lbl">Overview</div>
+    <button class="nav-it active" data-sec="dashboard" data-title="Dashboard"><svg class="ico"><use href="../assets/icons.svg#i-dashboard"/></svg>Dashboard</button>
+    <div class="lbl">Users</div>
+    <button class="nav-it" data-sec="users" data-title="User Management"><svg class="ico"><use href="../assets/icons.svg#i-user"/></svg>Users</button>
+    <button class="nav-it" data-sec="payments" data-title="Payment Requests"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg>Payments</button>
+    <div class="lbl">Configuration</div>
+    <button class="nav-it" data-sec="features" data-title="Feature Toggles"><svg class="ico"><use href="../assets/icons.svg#i-toggle"/></svg>Features</button>
+    <button class="nav-it" data-sec="appsettings" data-title="App Settings"><svg class="ico"><use href="../assets/icons.svg#i-settings"/></svg>App Settings</button>
+    <button class="nav-it" data-sec="branding" data-title="Branding"><svg class="ico"><use href="../assets/icons.svg#i-image"/></svg>Branding</button>
+    <button class="nav-it" data-sec="packages" data-title="Subscription Packages"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg>Packages</button>
+    <button class="nav-it" data-sec="trial" data-title="Trial & Free Tier"><svg class="ico"><use href="../assets/icons.svg#i-clock"/></svg>Trial / Free Tier</button>
+    <button class="nav-it" data-sec="paymethods" data-title="Payment Methods"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg>Payment Methods</button>
+    <button class="nav-it" data-sec="community" data-title="Community & Social"><svg class="ico"><use href="../assets/icons.svg#i-users"/></svg>Community & Social</button>
+    <button class="nav-it" data-sec="notices" data-title="Notices / Announcements"><svg class="ico"><use href="../assets/icons.svg#i-megaphone"/></svg>Notices</button>
+    <button class="nav-it" data-sec="custom-notif" data-title="Custom Notifications"><svg class="ico"><use href="../assets/icons.svg#i-send"/></svg>Notifications</button>
+    <div class="lbl">Social</div>
+    <button class="nav-it" data-sec="schools" data-title="Schools / Institutions"><svg class="ico"><use href="../assets/icons.svg#i-book-open"/></svg>Schools</button>
+    <button class="nav-it" data-sec="quizzes" data-title="Quiz Campaigns"><svg class="ico"><use href="../assets/icons.svg#i-sparkles"/></svg>Quiz Campaigns</button>
+    <button class="nav-it" data-sec="friends-mod" data-title="Friends &amp; Messages"><svg class="ico"><use href="../assets/icons.svg#i-users"/></svg>Friends &amp; DM Mod</button>
+    <button class="nav-it" data-sec="finance" data-title="Finance"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg>Finance</button>
+    <div class="lbl">Engagement</div>
+    <button class="nav-it" data-sec="support" data-title="Support Chat"><svg class="ico"><use href="../assets/icons.svg#i-chat"/></svg>Support Inbox</button>
+    <button class="nav-it" data-sec="cache" data-title="AI Questions Cache"><svg class="ico"><use href="../assets/icons.svg#i-cache"/></svg>AI Cache</button>
+    <div style="flex:1"></div>
+    <button class="nav-it" id="admin-logout-btn"><svg class="ico"><use href="../assets/icons.svg#i-logout"/></svg>Logout</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1 id="topbar-title"><svg class="ico lg"><use href="../assets/icons.svg#i-dashboard"/></svg> Dashboard</h1>
+      <div class="tag"><svg class="ico sm"><use href="../assets/icons.svg#i-user"/></svg> <span id="admin-name">admin</span></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="sec active">
+      <div class="kpis">
+        <div class="kpi"><div class="lbl2">Total Users</div><div class="val" id="kpi-users">0</div></div>
+        <div class="kpi"><div class="lbl2">Active</div><div class="val" id="kpi-active">0</div></div>
+        <div class="kpi"><div class="lbl2">In Trial</div><div class="val" id="kpi-trial">0</div></div>
+        <div class="kpi"><div class="lbl2">Pro Subscribers</div><div class="val" id="kpi-pro">0</div></div>
+      </div>
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-info"/></svg> Welcome</div>
+        <p style="font-size:.86rem;color:var(--text2);line-height:1.6">
+          এখান থেকে আপনি users, payments, features, app settings, packages, support chat, schools, quizzes ও আরো manage করতে পারবেন।
+        </p>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="card">
+          <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-flame"/></svg> Active Users (last 30 days)</div>
+          <canvas id="chart-dau" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg> Revenue trend</div>
+          <canvas id="chart-revenue" height="160"></canvas>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="card">
+          <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-ai"/></svg> API Token Usage</div>
+          <canvas id="chart-api" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-user"/></svg> Subscriptions by package</div>
+          <canvas id="chart-pkg" height="160"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCHOOLS -->
+    <section id="sec-schools" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-book-open"/></svg> Add Institution</div>
+        <div class="form-row">
+          <div class="form-group"><label>Name</label><input id="sc-name"/></div>
+          <div class="form-group"><label>Type</label>
+            <select id="sc-type"><option value="school">School</option><option value="college">College</option><option value="university">University</option></select>
+          </div>
+          <div class="form-group"><label>District</label><input id="sc-district"/></div>
+          <div class="form-group"><label>Upazila / City</label><input id="sc-upazila"/></div>
+        </div>
+        <button class="btn btn-primary" id="sc-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add</button>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-info"/></svg> Existing institutions</div>
+        <table>
+          <thead><tr><th>Name</th><th>Type</th><th>District</th><th>Approved</th><th>Action</th></tr></thead>
+          <tbody id="schools-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-megaphone"/></svg> Pending requests</div>
+        <table>
+          <thead><tr><th>Name</th><th>Type</th><th>District</th><th>Requested by</th><th>Action</th></tr></thead>
+          <tbody id="school-req-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- QUIZZES -->
+    <section id="sec-quizzes" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-sparkles"/></svg> Create Quiz Campaign</div>
+        <div class="form-row">
+          <div class="form-group"><label>Title</label><input id="qz-title"/></div>
+          <div class="form-group"><label>Category</label><input id="qz-category" placeholder="physics"/></div>
+          <div class="form-group"><label>Class level</label><input id="qz-class" placeholder="all or e.g. Class 10"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Start (datetime)</label><input id="qz-start" type="datetime-local"/></div>
+          <div class="form-group"><label>End (datetime)</label><input id="qz-end" type="datetime-local"/></div>
+          <div class="form-group"><label>Active</label><select id="qz-active"><option value="true">Yes</option><option value="false">No</option></select></div>
+        </div>
+        <div class="form-group">
+          <label>Questions <small style="color:var(--text2);font-weight:400">(add as many as you want via the form below)</small></label>
+          <div id="qz-builder" class="qz-builder"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" id="qz-builder-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add question</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="qz-toggle-json-btn">Show advanced text mode</button>
+          </div>
+        </div>
+        <div class="form-group" id="qz-json-group" style="display:none"><label>Advanced — Text / JSON fallback</label><textarea id="qz-json" style="min-height:180px;font-family:monospace" placeholder="Question title
+A. First option
+B. Second option
+C. Third option
+D. Fourth option
+Answer: B
+
+Blank line দিয়ে next question লিখুন. JSON format-ও support করে."></textarea></div>
+        <button class="btn btn-primary" id="qz-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Create campaign</button>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-info"/></svg> Campaigns</div>
+        <table>
+          <thead><tr><th>Title</th><th>Category</th><th>Class</th><th>Window</th><th>Q</th><th>Active</th><th>Attempts</th><th>Action</th></tr></thead>
+          <tbody id="quizzes-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FRIENDS / DM MODERATION -->
+    <section id="sec-friends-mod" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-users"/></svg> Friendships</div>
+        <table>
+          <thead><tr><th>User A</th><th>User B</th><th>Class</th><th>Since</th></tr></thead>
+          <tbody id="friendships-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-chat"/></svg> Recent direct messages</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Latest 100 messages — full content for moderation.</p>
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>Text</th><th>When</th></tr></thead>
+          <tbody id="dm-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-share"/></svg> Recent shared notes (per user)</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Open a user from the Users tab → see their shared notes inbox.</p>
+      </div>
+    </section>
+
+    <!-- FINANCE -->
+    <section id="sec-finance" class="sec">
+      <div class="card">
+        <div class="kpis">
+          <div class="kpi"><div class="lbl2">Total Revenue</div><div class="val" id="fi-total">৳0</div></div>
+          <div class="kpi"><div class="lbl2">This Month</div><div class="val" id="fi-month">৳0</div></div>
+          <div class="kpi"><div class="lbl2">This Week</div><div class="val" id="fi-week">৳0</div></div>
+          <div class="kpi"><div class="lbl2">Today</div><div class="val" id="fi-today">৳0</div></div>
+        </div>
+        <canvas id="chart-finance" height="160" style="margin-top:14px"></canvas>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg> Approved subscriptions</div>
+        <table>
+          <thead><tr><th>User</th><th>Plan</th><th>Method</th><th>Amount</th><th>When</th></tr></thead>
+          <tbody id="fi-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section id="sec-users" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-user"/></svg> Users</div>
+        <table>
+          <thead><tr><th>Name / Email</th><th>Institution</th><th>Class</th><th>Status</th><th>AI used</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PAYMENTS -->
+    <section id="sec-payments" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg> Payment Requests</div>
+        <table>
+          <thead><tr><th>User</th><th>Plan</th><th>Method</th><th>TRX</th><th>Sender</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="pay-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="sec-features" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-toggle"/></svg> Feature Toggles</div>
+        <p style="font-size:.78rem;color:var(--text2);margin-bottom:8px">Switch off any feature to immediately hide it from every connected user.</p>
+        <div id="features-list"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-sparkles"/></svg> Custom Features (User Dashboard "More Features")</div>
+        <p style="font-size:.78rem;color:var(--text2);margin-bottom:8px">User panel এ "More Features" grid এ এই entries live দেখাবে। Hot / New / Upcoming tag লাগাতে পারেন। Type = link হলে external URL খুলবে; type = embed হলে আপনার custom HTML iframe-এ render হবে।</p>
+        <div class="grid-2">
+          <div>
+            <div class="form-group"><label>Title</label><input id="cf-title" placeholder="e.g., Past Question Bank"/></div>
+            <div class="form-group"><label>Subtitle</label><input id="cf-sub" placeholder="Short description"/></div>
+            <div class="form-row">
+              <div class="form-group"><label>Icon (icon-id)</label>
+                <select id="cf-icon">
+                  <option value="i-sparkles">✨ sparkles</option>
+                  <option value="i-book-open">📖 book-open</option>
+                  <option value="i-flame">🔥 flame</option>
+                  <option value="i-gift">🎁 gift</option>
+                  <option value="i-credit">💳 credit</option>
+                  <option value="i-users">👥 users</option>
+                  <option value="i-chat">💬 chat</option>
+                  <option value="i-ai">🤖 ai</option>
+                  <option value="i-help">❓ help</option>
+                  <option value="i-share">↗ share</option>
+                  <option value="i-notes">📝 notes</option>
+                  <option value="i-add">＋ add</option>
+                  <option value="i-custom-img">🖼️ Custom Image (URL নিচে দিন)</option>
+                </select>
+              </div>
+              <div class="form-group" id="cf-iconlink-group"><label>Custom Icon Image URL (optional)</label>
+                <input id="cf-iconlink" placeholder="https://example.com/icon.png — নতুন icon লাগাতে"/>
+                <p class="mini-note" style="font-size:.72rem">Image URL দিলে built-in icon এর বদলে এই image দেখাবে।</p>
+              </div>
+              <div class="form-group"><label>Badge</label>
+                <select id="cf-badge">
+                  <option value="">None</option>
+                  <option value="hot">🔥 Hot</option>
+                  <option value="new">🆕 New</option>
+                  <option value="upcoming">⏳ Upcoming</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Type</label>
+                <select id="cf-type">
+                  <option value="link">External link</option>
+                  <option value="embed">Embedded HTML / custom code</option>
+                  <option value="section">Built-in section (advanced)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Order</label><input type="number" id="cf-order" value="100"/></div>
+            </div>
+            <div class="form-group" id="cf-url-group"><label>URL</label><input id="cf-url" placeholder="https://..."/></div>
+            <div class="form-group" id="cf-section-group" style="display:none"><label>Section ID</label><input id="cf-section" placeholder="e.g., quiz, leaderboard"/></div>
+            <div class="form-group" id="cf-html-group" style="display:none"><label>Custom HTML / code (sandboxed iframe)</label>
+              <textarea id="cf-html" style="min-height:160px;font-family:monospace;font-size:.8rem" placeholder="<h1>Hello</h1>&#10;<script>alert('hi')&lt;/script>"></textarea>
+              <p class="mini-note" style="font-size:.72rem;color:var(--text2);margin-top:4px">⚠️ HTML / JavaScript সম্পূর্ণ sandboxed iframe-এ চালু হবে। কোনো user data পাবে না।</p>
+            </div>
+            <div class="form-group"><label>Active</label>
+              <select id="cf-active">
+                <option value="true">Yes — show on user dashboard</option>
+                <option value="false">No — hide</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-success" id="cf-save-btn"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save Feature</button>
+              <button class="btn btn-secondary" id="cf-clear-btn">Clear form</button>
+            </div>
+          </div>
+          <div>
+            <div class="h" style="font-size:.9rem"><svg class="ico"><use href="../assets/icons.svg#i-notes"/></svg> Existing Custom Features</div>
+            <div id="cf-list" style="display:flex;flex-direction:column;gap:8px;max-height:600px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSTOM NOTIFICATIONS -->
+    <section id="sec-custom-notif" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-send"/></svg> Custom Notification পাঠান</div>
+        <p style="font-size:.78rem;color:var(--text2);margin-bottom:12px">User-দের কাস্টম notification পাঠান। সব user বা নির্দিষ্ট class বা user কে পাঠাতে পারবেন।</p>
+        <div class="grid-2">
+          <div>
+            <div class="form-group"><label>Target</label>
+              <select id="notif-target">
+                <option value="all">সব user</option>
+                <option value="class">নির্দিষ্ট Class</option>
+                <option value="user">নির্দিষ্ট User (UID/Email)</option>
+              </select>
+            </div>
+            <div class="form-group" id="notif-class-wrap" style="display:none"><label>Class Level</label><input id="notif-class" placeholder="e.g., SSC-2025"/></div>
+            <div class="form-group" id="notif-user-wrap" style="display:none"><label>User UID বা Email</label><input id="notif-uid" placeholder="Firebase UID বা email@..."/></div>
+            <div class="form-group"><label>Title</label><input id="notif-title" placeholder="Notification title"/></div>
+            <div class="form-group"><label>Message</label><textarea id="notif-body" style="min-height:100px" placeholder="Notification বার্তা..."></textarea></div>
+            <div class="form-row">
+              <div class="form-group"><label>Type</label>
+                <select id="notif-type">
+                  <option value="info">📢 Info</option>
+                  <option value="success">✅ Success</option>
+                  <option value="warn">⚠️ Warning</option>
+                  <option value="promo">🎁 Promo</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Link (optional)</label><input id="notif-link" placeholder="https://..."/></div>
+            </div>
+            <button class="btn btn-primary" id="cn-send-btn" style="width:100%"><svg class="ico"><use href="../assets/icons.svg#i-send"/></svg> Notification পাঠান</button>
+            <div id="cn-status" style="margin-top:8px;font-size:.8rem"></div>
+          </div>
+          <div>
+            <div class="h" style="font-size:.9rem">📋 পাঠানো Notifications (সাম্প্রতিক)</div>
+            <div id="cn-history" style="max-height:400px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-revision"/></svg> Revision Notification বন্ধের Requests</div>
+        <p style="font-size:.78rem;color:var(--text2);margin-bottom:8px">যেসব user revision notification বন্ধ চান তাদের request এখানে দেখাবে।</p>
+        <div id="rev-notif-requests"></div>
+      </div>
+    </section>
+
+    <!-- APP SETTINGS -->
+    <section id="sec-appsettings" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-settings"/></svg> App Settings</div>
+        <div class="grid-2">
+          <div>
+            <div class="form-group"><label>App Name</label><input id="as-name"/></div>
+            <div class="form-group"><label>Tagline</label><input id="as-tagline"/></div>
+            <div class="form-row">
+              <div class="form-group"><label>Revision delay (hours)</label><input type="number" id="as-rev"/></div>
+              <div class="form-group"><label>Default Groq Model</label><input id="as-groq-model" placeholder="llama-3.1-8b-instant"/></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Default Gemini Model (chat)</label><input id="as-gemini-model" placeholder="gemini-2.5-flash"/></div>
+              <div class="form-group"><label>Default Gemini Vision Model (OCR)</label><input id="as-gemini-vision-model" placeholder="gemini-2.5-flash"/></div>
+            </div>
+            <div class="form-group"><label>Default Groq API Key (private)</label><input id="as-groq-key" placeholder="gsk_..."/></div>
+            <div class="form-group"><label>User tutorial video URL</label><input id="as-tutorial-url" placeholder="https://youtube.com/..."/></div>
+            <div class="form-group"><label>imgbb API Key (for user avatar uploads — free at api.imgbb.com)</label><input id="as-imgbb-key" placeholder="abc123..."/></div>
+            <div class="form-group"><label>YouTube Data API key (optional — enables per-video listing for YouTube playlists)</label><input id="as-youtube-key" placeholder="AIza..."/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>System prompt for "Explain Note"</label>
+              <textarea id="as-sys-notes" style="min-height:130px"></textarea></div>
+            <div class="form-group"><label>System prompt for AI Chat</label>
+              <textarea id="as-sys-chat" style="min-height:130px"></textarea></div>
+          </div>
+        </div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-info"/></svg> SEO &amp; Meta tags</div>
+        <div class="form-row">
+          <div class="form-group"><label>SEO title (HTML &lt;title&gt;)</label><input id="as-seo-title" placeholder="Second Brain — Smart Note App"/></div>
+          <div class="form-group"><label>SEO description (meta)</label><input id="as-seo-desc" placeholder="Notes, Revision, Prayer Times..."/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Open Graph image URL</label><input id="as-seo-og" placeholder="https://..."/></div>
+          <div class="form-group"><label>Keywords (comma separated)</label><input id="as-seo-keywords"/></div>
+        </div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-shield"/></svg> Cloudflare Turnstile (sign-up captcha)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Site key (public)</label><input id="as-turnstile-site"/></div>
+          <div class="form-group"><label>Secret key (server-side only — keep blank if no backend yet)</label><input id="as-turnstile-secret" type="password"/></div>
+        </div>
+        <div class="form-group"><label>Enable Turnstile on registration?</label>
+          <select id="as-turnstile-enable"><option value="false">No</option><option value="true">Yes</option></select>
+        </div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-syllabus"/></svg> Class Management</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Comma-separated list of classes / levels shown in the registration dropdown.</p>
+        <div class="form-group"><label>Class levels</label><textarea id="as-classes" style="min-height:60px" placeholder="Class 6, Class 7, Class 8, Class 9, Class 10, SSC, HSC, University"></textarea></div>
+
+        <div class="h" style="margin-top:18px"><svg class="ico"><use href="../assets/icons.svg#i-gift"/></svg> Smart Referral Reward</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">When a referred user purchases one of these packages, the referrer gets a 30-day reward. Leave blank to credit on every package.</p>
+        <div class="form-group"><label>Eligible packages</label><div id="as-referral-pkg-list" style="display:flex;flex-wrap:wrap;gap:8px;font-size:.85rem"></div></div>
+
+        <button class="btn btn-success" id="as-save-btn" style="margin-top:14px"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save</button>
+      </div>
+    </section>
+
+    <!-- BRANDING -->
+    <section id="sec-branding" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-image"/></svg> Branding</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">User panel এ live update হবে — change করলেই সব user এর সাইটে সাথে সাথে apply হবে।</p>
+        <div class="grid-2">
+          <div>
+            <div class="form-group"><label>App Name</label><input id="br-name" placeholder="Second Brain"/></div>
+            <div class="form-group"><label>Tagline</label><input id="br-tagline"/></div>
+            <div class="form-group"><label>Logo URL</label><input id="br-logo" placeholder="https://i.imgur.com/..."/></div>
+            <div class="form-group"><label>Favicon URL</label><input id="br-favicon" placeholder="https://i.imgur.com/..."/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Logo preview</label>
+              <div id="br-logo-preview" style="width:96px;height:96px;border-radius:14px;background:var(--surface2);display:grid;place-items:center;border:1px solid var(--border)"></div>
+            </div>
+            <div class="form-group"><label>Favicon preview</label>
+              <div id="br-favicon-preview" style="width:32px;height:32px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-success" id="br-save-btn"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save Branding</button>
+      </div>
+    </section>
+
+    <!-- PACKAGES -->
+    <section id="sec-packages" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg> Subscription Packages</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">প্রতিটা package এ কোন কোন feature on, কত quota — সব configure করুন।</p>
+        <button class="btn btn-primary" id="pkg-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add new package</button>
+        <div id="pkg-list" style="margin-top:14px;display:grid;gap:10px"></div>
+      </div>
+    </section>
+
+    <!-- TRIAL + FREE TIER -->
+    <section id="sec-trial" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-clock"/></svg> Mandatory Trial Package</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">প্রতিটা নতুন user auto এই trial পাবে — আপনি duration ও feature access control করুন।</p>
+        <div class="form-row">
+          <div class="form-group"><label>Trial title</label><input id="tr-title" placeholder="Free Trial"/></div>
+          <div class="form-group"><label>Duration (days)</label><input type="number" id="tr-days" placeholder="14"/></div>
+        </div>
+        <div id="tr-features" class="feature-matrix"></div>
+        <button class="btn btn-success" id="tr-save-btn"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save Trial Settings</button>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-tag"/></svg> Free Tier (after trial expires, no plan)</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Trial শেষ হওয়ার পর কোন কোন feature কতটুকু free দিবেন।</p>
+        <div id="ft-features" class="feature-matrix"></div>
+        <button class="btn btn-success" id="ft-save-btn"><svg class="ico"><use href="../assets/icons.svg#i-check"/></svg> Save Free Tier</button>
+      </div>
+    </section>
+
+    <!-- PAYMENT METHODS -->
+    <section id="sec-paymethods" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-credit"/></svg> Payment Methods</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">Bkash, Nagad, Rocket, Bank — যা চাইবেন add করুন। Toggle off করলে user panel থেকে hide হবে।</p>
+        <button class="btn btn-primary" id="pm-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add payment method</button>
+        <div id="pm-list" style="margin-top:14px;display:grid;gap:10px"></div>
+      </div>
+    </section>
+
+    <!-- COMMUNITY + SOCIAL -->
+    <section id="sec-community" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-users"/></svg> Community Groups</div>
+        <p class="mini-note" style="font-size:.78rem;color:var(--text2)">User panel এর Community tab এ এই group গুলো দেখাবে।</p>
+        <button class="btn btn-primary" id="cm-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add community group</button>
+        <div id="cm-list" style="margin-top:14px;display:grid;gap:10px"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-share"/></svg> Social Links (footer)</div>
+        <button class="btn btn-primary" id="so-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add social link</button>
+        <div id="so-list" style="margin-top:14px;display:grid;gap:10px"></div>
+      </div>
+    </section>
+
+    <!-- NOTICES -->
+    <section id="sec-notices" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-megaphone"/></svg> Notices / Announcements</div>
+        <p class="mini-note">User panel এর dashboard এ banner হিসেবে দেখাবে। Popup মোডে স্ক্রীন এর নিচে toast আকারে আসবে। User dismiss করলে আর আসবে না।</p>
+        <button class="btn btn-primary" id="nt-add-btn"><svg class="ico"><use href="../assets/icons.svg#i-add"/></svg> Add notice</button>
+        <div id="nt-list" style="margin-top:14px;display:grid;gap:10px"></div>
+      </div>
+    </section>
+
+    <!-- SUPPORT -->
+    <section id="sec-support" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-chat"/></svg> Support Inbox</div>
+        <div class="chat-shell">
+          <div class="chat-list" id="chat-list"><div class="empty">Loading…</div></div>
+          <div class="chat-thread">
+            <div class="thread-header" id="thread-header">Pick a conversation</div>
+            <div class="thread-body" id="thread-body"></div>
+            <div class="thread-input">
+              <input id="thread-input" placeholder="Reply to user..."/>
+              <button class="btn btn-primary" id="thread-send-btn"><svg class="ico"><use href="../assets/icons.svg#i-send"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI QUESTIONS CACHE -->
+    <section id="sec-cache" class="sec">
+      <div class="card">
+        <div class="h"><svg class="ico"><use href="../assets/icons.svg#i-cache"/></svg> AI Questions Cache</div>
+        <p style="font-size:.78rem;color:var(--text2);margin-bottom:8px">Class+Subject+Chapter অনুযায়ী generated questions। Delete করলে next time fresh AI call হবে।</p>
+        <table>
+          <thead><tr><th>Class</th><th>Subject</th><th>Chapter</th><th>Revisions</th><th>Action</th></tr></thead>
+          <tbody id="cache-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

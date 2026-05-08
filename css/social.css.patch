@@ -1,0 +1,30 @@
+/* stylish friends search */
+.friends-search-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.friends-search-wrap .search-icon {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text2);
+  pointer-events: none;
+}
+#friends-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border: 2px solid var(--border);
+  border-radius: 50px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: .9rem;
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+  box-sizing: border-box;
+}
+#friends-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  background: var(--surface);
+}
+#friends-search-input::placeholder { color: var(--text3); }
