@@ -31,6 +31,42 @@ export function initYoutubeCourses(){
 function load(){
   try { courses = JSON.parse(localStorage.getItem(KEY()) || '[]'); }
   catch(e){ courses = []; }
+  // Migrate legacy courses (single playlistId, no items array) to the new
+  // shape so openCourse() doesn't crash.
+  let migrated = false;
+  courses = (courses || []).map(c => {
+    if(!c || typeof c !== 'object') return null;
+    if(Array.isArray(c.items) && c.items.length) return c;
+    if(c.playlistId){
+      migrated = true;
+      return {
+        ...c,
+        items: [{
+          id: 'pl-' + String(c.playlistId).slice(0, 12),
+          type: 'playlist',
+          playlistId: c.playlistId,
+          videoId: null,
+          title: 'Playlist',
+          thumb: '',
+        }],
+      };
+    }
+    if(c.videoId){
+      migrated = true;
+      return {
+        ...c,
+        items: [{
+          id: 'v-' + String(c.videoId),
+          type: 'video',
+          videoId: c.videoId,
+          title: c.title || 'Video',
+          thumb: `https://i.ytimg.com/vi/${c.videoId}/hqdefault.jpg`,
+        }],
+      };
+    }
+    return null;
+  }).filter(Boolean);
+  if(migrated) save();
 }
 function save(){ localStorage.setItem(KEY(), JSON.stringify(courses)); }
 
@@ -220,6 +256,7 @@ let activeItemId = null;
 function openCourse(id){
   const c = courses.find(x => x.id === id);
   if(!c) return;
+  if(!Array.isArray(c.items) || !c.items.length){ toast('This course has no videos','warn'); return; }
   active = c;
   const wrap = document.getElementById('yt-course-player-wrap');
   const frame = document.getElementById('yt-course-player-frame');

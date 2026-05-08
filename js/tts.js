@@ -170,7 +170,9 @@ function ensureWarmup(){
     const u = new SpeechSynthesisUtterance(' ');
     u.volume = 0;
     speechSynthesis.speak(u);
-    setTimeout(() => speechSynthesis.cancel(), 80);
+    // Cancel synchronously so a later real speak() isn't killed by a
+    // delayed cancel timer (Devin Review finding).
+    speechSynthesis.cancel();
   } catch(e){}
 }
 
