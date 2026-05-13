@@ -29,6 +29,7 @@ const SHELL = [
   './js/schools.js','./js/study-tracker.js','./js/quota.js','./js/public-profile.js',
   './js/idb-storage.js','./js/note-images.js','./js/syllabus-ocr.js','./js/tts.js',
   './js/youtube-courses.js','./js/push-notifications.js','./js/onboarding-tour.js',
+  './js/question-bank.js',
 ];
 
 self.addEventListener('install', e => {
@@ -102,4 +103,22 @@ self.addEventListener('notificationclick', event => {
       return self.clients.openWindow(path);
     })
   );
+});
+
+// Server-side Web Push / FCM payload support. This is what allows
+// notifications to appear even when no app tab is open, as long as a backend
+// sends a push message to the saved subscription/token.
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; }
+  catch(e){ data = { title:'Second Brain', body:event.data?.text?.() || '' }; }
+  const title = data.title || 'Second Brain';
+  const opts = {
+    body: data.body || '',
+    icon: data.icon || './assets/logo.svg',
+    badge: data.badge || './assets/logo.svg',
+    tag: data.tag || 'sb-push',
+    data: data.data || { path:data.path || '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, opts));
 });

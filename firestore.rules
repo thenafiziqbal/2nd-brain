@@ -23,7 +23,10 @@ service cloud.firestore {
       ];
     }
     function signedIn() { return request.auth != null; }
-    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isBanned(uid) { 
+      return get(/databases/$(database)/documents/users/$(uid)).data.banned == true;
+    }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid && !isBanned(uid); }
 
     // Public-listing of every user's profile (name, classLevel, photoUrl,
     // totalStudySeconds) is needed for the leaderboard and same-class
@@ -118,6 +121,12 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /user_ids/{id} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     // === Social / gamification ===
@@ -233,6 +242,16 @@ service cloud.firestore {
     }
 
     match /admin_notifications/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /password_reset_requests/{id} {
+      allow read, update, delete: if isAdmin();
+      allow create: if true;
+    }
+
+    match /question_banks/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
